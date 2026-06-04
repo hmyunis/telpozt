@@ -5,6 +5,7 @@ from app.api.utils import (
     verify_source_owner, verify_workspace_owner,
 )
 from app.models.db import get_db_connection
+from app.services.scheduler import run_scraper_pipeline
 from app.utils.timezone import convert_local_slots_to_utc, convert_utc_slots_to_local, get_current_utc_iso
 from app.utils.validators import validate_channel_priority
 
@@ -191,3 +192,23 @@ def update_workspace_schedule(id):
         )
         conn.commit()
     return api_success({"message": "Workspace schedule configuration synchronized.", "time_slots": time_slots, "is_enabled": bool(is_enabled)})
+
+
+@workspaces_bp.route("/<int:id>/scrape", methods=["POST"])
+@token_required
+def trigger_workspace_scrape(id):
+    with get_db_connection() as conn:
+        verify_workspace_owner(id, g.current_user["id"], conn)
+        active_source_count = conn.execute(
+            "SELECT COUNT(*) AS count FROM source_channels WHERE workspace_id = ? AND is_active = 1",
+            (id,),
+        ).fetchone()["count"]
+
+    if active_source_count == 0:
+        raise APIError("NO_ACTIVE_SOURCES", "This workspace has no active source channels to scrape.", 400)
+
+    run_scraper_pipeline(workspace_id=id)
+    return api_success({
+        "message": "Workspace scraping pipeline completed.",
+        "active_source_count": active_source_count,
+    })

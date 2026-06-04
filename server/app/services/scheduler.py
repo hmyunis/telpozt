@@ -36,10 +36,16 @@ def start_scheduler():
     logger.info("Background scheduling services initialized successfully.")
 
 
-def run_scraper_pipeline():
+def run_scraper_pipeline(workspace_id: int | None = None):
     logger.info("Starting background scraper pipeline...")
     with get_db_connection() as conn:
-        active_sources = conn.execute("SELECT * FROM source_channels WHERE is_active = 1").fetchall()
+        if workspace_id is None:
+            active_sources = conn.execute("SELECT * FROM source_channels WHERE is_active = 1").fetchall()
+        else:
+            active_sources = conn.execute(
+                "SELECT * FROM source_channels WHERE is_active = 1 AND workspace_id = ?",
+                (workspace_id,),
+            ).fetchall()
         for src in active_sources:
             posts = scrape_channel_messages(src["channel_id"], src["last_message_id"])
             for post in posts:
