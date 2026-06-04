@@ -1,0 +1,46 @@
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache and build output
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+
+# SQLite runtime databases
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-shm
+*.db-wal
+*.sqlite-shm
+*.sqlite-wal
+
+# Telegram/Telethon session files
+sessions/
+*.session
+*.session-journal
+
+# Logs and local runtime output
+*.log
+logs/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
