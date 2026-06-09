@@ -1,3 +1,6 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from flask import Blueprint, g, request
 
 from app.api.utils import (
@@ -10,6 +13,30 @@ from app.utils.timezone import convert_local_slots_to_utc, convert_utc_slots_to_
 from app.utils.validators import validate_channel_priority
 
 workspaces_bp = Blueprint("workspaces", __name__)
+
+
+def _parse_optional_positive_int(value, field_name: str) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as err:
+        raise APIError("VALIDATION_ERROR", f"{field_name} must be an integer.", 400) from err
+    if parsed <= 0:
+        raise APIError("VALIDATION_ERROR", f"{field_name} must be greater than zero.", 400)
+    return parsed
+
+
+def _parse_optional_iso_datetime(value, field_name: str) -> datetime | None:
+    if value in (None, ""):
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError as err:
+        raise APIError("VALIDATION_ERROR", f"{field_name} must be a valid ISO-8601 datetime.", 400) from err
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo("UTC"))
+    return parsed.astimezone(ZoneInfo("UTC"))
 
 
 @workspaces_bp.route("", methods=["GET"])
@@ -107,6 +134,14 @@ def create_source_channel(id):
     data = request.get_json() or {}
     channel_id = data.get("channel_id", "").strip()
     priority = data.get("priority", "normal").strip()
+    default_scrape_message_count = _parse_optional_positive_int(
+        data.get("default_scrape_message_count"),
+        "default_scrape_message_count",
+    )
+    default_lookback_days = _parse_optional_positive_int(
+        data.get("default_lookback_days"),
+        "default_lookback_days",
+    )
     if not channel_id:
         raise APIError("VALIDATION_ERROR", "channel_id is required.", 400)
     validate_channel_priority(priority)
@@ -114,9 +149,21 @@ def create_source_channel(id):
         verify_workspace_owner(id, g.current_user["id"], conn)
         cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO source_channels (workspace_id, channel_id, display_name, priority, is_active, created_at)
-               VALUES (?, ?, ?, ?, 1, ?)""",
-            (id, channel_id, data.get("display_name"), priority, get_current_utc_iso()),
+            """INSERT INTO source_channels (
+                workspace_id, channel_id, display_name, priority,
+                default_scrape_message_count, default_lookback_days,
+                is_active, created_at
+               )
+               VALUES (?, ?, ?, ?, ?, ?, 1, ?)""",
+            (
+                id,
+                channel_id,
+                data.get("display_name"),
+                priority,
+                default_scrape_message_count,
+                default_lookback_days,
+                get_current_utc_iso(),
+            ),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM source_channels WHERE id = ?", (cursor.lastrowid,)).fetchone()
@@ -132,10 +179,19 @@ def update_source_channel(id, source_id):
         verify_source_owner(id, source_id, conn)
         updates = []
         params = []
-        for field in ["channel_id", "display_name", "priority", "is_active"]:
+        for field in [
+            "channel_id",
+            "display_name",
+            "priority",
+            "is_active",
+            "default_scrape_message_count",
+            "default_lookback_days",
+        ]:
             if field in data:
                 if field == "priority":
                     validate_channel_priority(data[field])
+                if field in {"default_scrape_message_count", "default_lookback_days"}:
+                    data[field] = _parse_optional_positive_int(data[field], field)
                 updates.append(f"{field} = ?")
                 params.append(data[field])
         if not updates:
@@ -197,6 +253,22 @@ def update_workspace_schedule(id):
 @workspaces_bp.route("/<int:id>/scrape", methods=["POST"])
 @token_required
 def trigger_workspace_scrape(id):
+    data = request.get_json() or {}
+    override_message_count = _parse_optional_positive_int(
+        data.get("message_count"),
+        "message_count",
+    )
+    override_from_date = _parse_optional_iso_datetime(
+        data.get("from_date_utc"),
+        "from_date_utc",
+    )
+    override_to_date = _parse_optional_iso_datetime(
+        data.get("to_date_utc"),
+        "to_date_utc",
+    )
+    if override_from_date and override_to_date and override_from_date > override_to_date:
+        raise APIError("VALIDATION_ERROR", "from_date_utc must be earlier than to_date_utc.", 400)
+
     with get_db_connection() as conn:
         verify_workspace_owner(id, g.current_user["id"], conn)
         active_source_count = conn.execute(
@@ -204,11 +276,35 @@ def trigger_workspace_scrape(id):
             (id,),
         ).fetchone()["count"]
 
+        # Get max scraped_post_id before we run the pipeline
+        prev_max_row = conn.execute("SELECT MAX(id) as m FROM scraped_posts").fetchone()
+        prev_max = prev_max_row["m"] if prev_max_row and prev_max_row["m"] else 0
+
     if active_source_count == 0:
         raise APIError("NO_ACTIVE_SOURCES", "This workspace has no active source channels to scrape.", 400)
 
-    run_scraper_pipeline(workspace_id=id)
+    # Runs synchronously
+    run_scraper_pipeline(
+        workspace_id=id,
+        override_message_count=override_message_count,
+        override_from_date=override_from_date,
+        override_to_date=override_to_date,
+    )
+
+    with get_db_connection() as conn:
+        # Fetch only the newly inserted posts
+        new_posts = conn.execute("""
+            SELECT sp.id, sp.raw_text, sc.channel_id as source_channel, sp.dedup_status,
+                   sp.original_posted_at_utc, sp.view_count,
+                   COALESCE(sc.display_name, sc.channel_id) as source_label
+            FROM scraped_posts sp
+            JOIN source_channels sc ON sp.source_channel_id = sc.id
+            WHERE sp.id > ? AND sc.workspace_id = ?
+            ORDER BY sp.id DESC
+        """, (prev_max, id)).fetchall()
+
     return api_success({
         "message": "Workspace scraping pipeline completed.",
         "active_source_count": active_source_count,
+        "new_posts": [dict(p) for p in new_posts]
     })

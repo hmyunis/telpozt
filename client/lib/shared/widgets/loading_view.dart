@@ -50,7 +50,8 @@ class _PulseLoader extends StatelessWidget {
         const SizedBox(
           width: 32,
           height: 32,
-          child: CircularProgressIndicator(color: AppColors.luxuryOrange, strokeWidth: 2.0),
+          child: CircularProgressIndicator(
+              color: AppColors.luxuryOrange, strokeWidth: 2.0),
         ),
       ],
     );
@@ -101,7 +102,9 @@ class _ListSkeleton extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SkeletonBlock(height: 78, borderRadius: BorderRadius.all(Radius.circular(8.0))),
+              SkeletonBlock(
+                  height: 78,
+                  borderRadius: BorderRadius.all(Radius.circular(8.0))),
             ],
           ),
         );
@@ -124,11 +127,20 @@ class _DetailSkeleton extends StatelessWidget {
           SizedBox(height: 24),
           Row(
             children: [
-              Expanded(child: SkeletonBlock(height: 72, borderRadius: BorderRadius.all(Radius.circular(8.0)))),
+              Expanded(
+                  child: SkeletonBlock(
+                      height: 72,
+                      borderRadius: BorderRadius.all(Radius.circular(8.0)))),
               SizedBox(width: 8),
-              Expanded(child: SkeletonBlock(height: 72, borderRadius: BorderRadius.all(Radius.circular(8.0)))),
+              Expanded(
+                  child: SkeletonBlock(
+                      height: 72,
+                      borderRadius: BorderRadius.all(Radius.circular(8.0)))),
               SizedBox(width: 8),
-              Expanded(child: SkeletonBlock(height: 72, borderRadius: BorderRadius.all(Radius.circular(8.0)))),
+              Expanded(
+                  child: SkeletonBlock(
+                      height: 72,
+                      borderRadius: BorderRadius.all(Radius.circular(8.0)))),
             ],
           ),
           SizedBox(height: 24),

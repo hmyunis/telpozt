@@ -21,12 +21,16 @@ class SourcesRepository {
     required String channelId,
     required String displayName,
     required String priority,
+    int? defaultScrapeMessageCount,
+    int? defaultLookbackDays,
   }) async {
     final client = ref.read(apiClientProvider);
     await client.post('/workspaces/$workspaceId/source-channels', data: {
       'channel_id': channelId,
       'display_name': displayName,
       'priority': priority,
+      'default_scrape_message_count': defaultScrapeMessageCount,
+      'default_lookback_days': defaultLookbackDays,
     });
   }
 
@@ -36,6 +40,8 @@ class SourcesRepository {
     required String priority,
     required bool isActive,
     required String displayName,
+    int? defaultScrapeMessageCount,
+    int? defaultLookbackDays,
   }) async {
     final client = ref.read(apiClientProvider);
     await client
@@ -43,6 +49,8 @@ class SourcesRepository {
       'priority': priority,
       'is_active': isActive ? 1 : 0,
       'display_name': displayName,
+      'default_scrape_message_count': defaultScrapeMessageCount,
+      'default_lookback_days': defaultLookbackDays,
     });
   }
 

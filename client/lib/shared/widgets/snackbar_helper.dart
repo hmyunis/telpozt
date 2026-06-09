@@ -4,7 +4,7 @@ import '../../core/api/api_error.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 
-enum SnackbarType { success, error, info }
+enum SnackbarType { success, error, info, warning }
 
 class SnackbarHelper {
   SnackbarHelper._();
@@ -27,10 +27,13 @@ class SnackbarHelper {
 
   static void showError(BuildContext context, Object error, {String? prefix}) {
     final message = readableError(error);
-    show(context, message: prefix == null ? message : '$prefix: $message', type: SnackbarType.error);
+    show(context,
+        message: prefix == null ? message : '$prefix: $message',
+        type: SnackbarType.error);
   }
 
-  static void show(BuildContext context, {required String message, SnackbarType type = SnackbarType.info}) {
+  static void show(BuildContext context,
+      {required String message, SnackbarType type = SnackbarType.info}) {
     final scaffoldMessenger = ScaffoldMessenger.of(context);
     scaffoldMessenger.removeCurrentSnackBar();
 
@@ -49,23 +52,34 @@ class SnackbarHelper {
         accentColor = AppColors.luxuryOrange;
         icon = Icons.info_outline;
         break;
+      case SnackbarType.warning:
+        accentColor = AppColors.brandOrange;
+        icon = Icons.warning_amber_outlined;
+        break;
     }
 
     scaffoldMessenger.showSnackBar(
       SnackBar(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF1E1E1E),
+        backgroundColor: AppColors.surfaceOf(context),
         elevation: 6,
         margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0)),
         content: Row(
           children: [
-            Container(width: 3, height: 24, decoration: BoxDecoration(color: accentColor, borderRadius: BorderRadius.circular(1.5)),
+            Container(
+              width: 3,
+              height: 24,
+              decoration: BoxDecoration(
+                  color: accentColor, borderRadius: BorderRadius.circular(1.5)),
             ),
             const SizedBox(width: 10.0),
             Icon(icon, color: accentColor, size: 18),
             const SizedBox(width: 10.0),
-            Expanded(child: Text(message, style: AppTextStyles.bodyMd.copyWith(color: AppColors.white))),
+            Expanded(
+                child: Text(message,
+                    style: AppTextStyles.bodyMd
+                        .copyWith(color: AppColors.textPrimaryOf(context)))),
           ],
         ),
         duration: const Duration(seconds: 3),

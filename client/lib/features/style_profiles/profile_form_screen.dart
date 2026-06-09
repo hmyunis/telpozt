@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/models/style_profile.dart';
+import '../../shared/widgets/custom_button.dart';
+import '../../shared/widgets/custom_text_field.dart';
 import '../../shared/widgets/form_section_header.dart';
 import '../../shared/widgets/loading_view.dart';
-import '../../shared/widgets/pull_to_refresh.dart';
 import '../../shared/widgets/segmented_field.dart';
 import '../../shared/widgets/snackbar_helper.dart';
 import 'style_profiles_provider.dart';
@@ -70,18 +70,11 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
       _hashtagStyle = p.hashtagStyle;
       _lengthPreset = p.lengthPreset;
     } catch (e) {
-      if (mounted) {
-        SnackbarHelper.showError(context, e,
-            prefix: 'Failed to populate profile');
-      }
+      if (mounted)
+        SnackbarHelper.showError(context, e, prefix: 'Failed to load');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  Future<List<StyleProfile>> _refreshProfilesCache() {
-    ref.invalidate(styleProfilesListProvider);
-    return ref.refresh(styleProfilesNotifierProvider.future);
   }
 
   Future<void> _saveForm() async {
@@ -90,7 +83,9 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
     final profile = StyleProfile(
       id: widget.profileId ?? 0,
       userId: 0,
-      name: _nameController.text.trim(),
+      name: _nameController.text.trim().isEmpty
+          ? 'Untitled Profile'
+          : _nameController.text.trim(),
       entityName: _entityNameController.text.trim().isEmpty
           ? null
           : _entityNameController.text.trim(),
@@ -116,17 +111,16 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
       } else {
         await ref.read(styleProfilesRepositoryProvider).createProfile(profile);
       }
-      await _refreshProfilesCache();
+      ref.invalidate(styleProfilesListProvider);
+      ref.refresh(styleProfilesNotifierProvider.future);
+
       if (mounted) {
-        SnackbarHelper.show(context,
-            message: 'Style configuration profile saved.',
-            type: SnackbarType.success);
+        SnackbarHelper.showSuccess(
+            context, 'Style configuration profile saved.');
         context.pop();
       }
     } catch (e) {
-      if (mounted) {
-        SnackbarHelper.showError(context, e);
-      }
+      if (mounted) SnackbarHelper.showError(context, e);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -134,227 +128,110 @@ class _ProfileFormScreenState extends ConsumerState<ProfileFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColorsExtension>()!;
     return Scaffold(
-      backgroundColor: colors.bgApp,
       appBar: AppBar(
         leading: IconButton(
-            icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
-        title: Text(widget.isEdit ? 'EDIT PROFILE' : 'NEW PROFILE',
-            style: AppTextStyles.heading2.copyWith(color: colors.textPrimary)),
+          icon: Icon(Icons.close),
+          onPressed: () => context.pop(),
+        ),
+        title: Text(widget.isEdit ? 'EDIT STYLE PROFILE' : 'NEW STYLE PROFILE',
+            style: AppTextStyles.heading2),
       ),
       body: _isLoading
           ? const LoadingView(type: LoadingViewType.form)
           : Form(
               key: _formKey,
-              child: PullToRefresh(
-                onRefresh: () async {
-                  if (widget.isEdit && widget.profileId != null) {
-                    await _loadProfileData();
-                  }
-                },
-                child: SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const FormSectionHeader(label: 'IDENTITY'),
-                      Text('PROFILE NAME',
-                          style: AppTextStyles.labelMd
-                              .copyWith(color: colors.textSecondary)),
-                      const SizedBox(height: 8.0),
-                      TextFormField(
-                        controller: _nameController,
-                        style: AppTextStyles.bodyLg
-                            .copyWith(color: colors.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'e.g. Technical Executive Voice',
-                          hintStyle: AppTextStyles.bodyLg
-                              .copyWith(color: colors.textMuted),
-                          filled: true,
-                          fillColor: colors.bgInput,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(4.0),
-                              borderSide:
-                                  BorderSide(color: colors.borderDefault)),
-                        ),
-                        validator: (v) => (v == null || v.trim().isEmpty)
-                            ? 'Profile name is required.'
-                            : null,
-                      ),
-                      const SizedBox(height: 16.0),
-                      Text('SPEAK AS ENTITY',
-                          style: AppTextStyles.labelMd
-                              .copyWith(color: colors.textSecondary)),
-                      const SizedBox(height: 8.0),
-                      TextFormField(
-                        controller: _entityNameController,
-                        style: AppTextStyles.bodyLg
-                            .copyWith(color: colors.textPrimary),
-                        decoration: InputDecoration(
-                          hintText: 'e.g. Senior Architect (optional)',
-                          hintStyle: AppTextStyles.bodyLg
-                              .copyWith(color: colors.textMuted),
-                          filled: true,
-                          fillColor: colors.bgInput,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(4.0),
-                              borderSide:
-                                  BorderSide(color: colors.borderDefault)),
-                        ),
-                      ),
-                      const SizedBox(height: 16.0),
-                      SegmentedField<String?>(
-                        label: 'Entity Type Scale',
-                        options: [
-                          SegmentedOption(value: 'company', label: 'Company'),
-                          SegmentedOption(
-                              value: 'individual', label: 'Individual'),
-                          SegmentedOption(
-                              value: 'media_outlet', label: 'Media'),
-                          SegmentedOption(
-                              value: 'community', label: 'Community'),
-                        ],
-                        selectedValue: _entityType,
-                        onChanged: (val) => setState(() => _entityType = val),
-                      ),
-                      const FormSectionHeader(label: 'VOICE & TONE'),
-                      SegmentedField<String>(
-                        label: 'Tonal Direction',
-                        options: [
-                          SegmentedOption(value: 'formal', label: 'Formal'),
-                          SegmentedOption(
-                              value: 'semi_formal', label: 'Semi-Formal'),
-                          SegmentedOption(value: 'casual', label: 'Casual'),
-                          SegmentedOption(value: 'punchy', label: 'Punchy'),
-                        ],
-                        selectedValue: _tone,
-                        onChanged: (val) => setState(() => _tone = val),
-                      ),
-                      const SizedBox(height: 16.0),
-                      SegmentedField<String>(
-                        label: 'Technical Jargon Treatment',
-                        options: [
-                          SegmentedOption(value: 'preserve', label: 'Preserve'),
-                          SegmentedOption(value: 'simplify', label: 'Simplify'),
-                          SegmentedOption(
-                              value: 'explain_inline', label: 'Explain Inline'),
-                        ],
-                        selectedValue: _jargonHandling,
-                        onChanged: (val) =>
-                            setState(() => _jargonHandling = val),
-                      ),
-                      const FormSectionHeader(label: 'FORMAT RULES'),
-                      SegmentedField<String>(
-                        label: 'Text Structure',
-                        options: [
-                          SegmentedOption(
-                              value: 'paragraph', label: 'Paragraph'),
-                          SegmentedOption(
-                              value: 'bullet_points', label: 'Bullets'),
-                          SegmentedOption(
-                              value: 'lead_conclusion',
-                              label: 'Lead & Conclusion'),
-                          SegmentedOption(
-                              value: 'inverted_pyramid',
-                              label: 'Inverted Pyramid'),
-                        ],
-                        selectedValue: _structure,
-                        onChanged: (val) => setState(() => _structure = val),
-                      ),
-                      const SizedBox(height: 16.0),
-                      SegmentedField<String>(
-                        label: 'Emoji Usage',
-                        options: [
-                          SegmentedOption(value: 'none', label: 'None'),
-                          SegmentedOption(value: 'minimal', label: 'Minimal'),
-                          SegmentedOption(value: 'moderate', label: 'Moderate'),
-                          SegmentedOption(value: 'heavy', label: 'Heavy'),
-                        ],
-                        selectedValue: _emojiUsage,
-                        onChanged: (val) => setState(() => _emojiUsage = val),
-                      ),
-                      const SizedBox(height: 16.0),
-                      SegmentedField<String>(
-                        label: 'Closing Call to Action',
-                        options: [
-                          SegmentedOption(value: 'none', label: 'None'),
-                          SegmentedOption(value: 'soft', label: 'Soft'),
-                          SegmentedOption(value: 'strong', label: 'Strong'),
-                        ],
-                        selectedValue: _callToAction,
-                        onChanged: (val) => setState(() => _callToAction = val),
-                      ),
-                      const SizedBox(height: 16.0),
-                      SegmentedField<String>(
-                        label: 'Hashtag Curation',
-                        options: [
-                          SegmentedOption(value: 'none', label: 'None'),
-                          SegmentedOption(value: 'minimal', label: 'Minimal'),
-                          SegmentedOption(value: 'topical', label: 'Topical'),
-                        ],
-                        selectedValue: _hashtagStyle,
-                        onChanged: (val) => setState(() => _hashtagStyle = val),
-                      ),
-                      const SizedBox(height: 16.0),
-                      SegmentedField<String>(
-                        label: 'Target Post Length Preset',
-                        options: [
-                          SegmentedOption(
-                              value: 'short', label: 'Short (200-500)'),
-                          SegmentedOption(
-                              value: 'medium', label: 'Medium (500-1k)'),
-                          SegmentedOption(value: 'long', label: 'Long (1k-2k)'),
-                        ],
-                        selectedValue: _lengthPreset,
-                        onChanged: (val) => setState(() => _lengthPreset = val),
-                      ),
-                      const FormSectionHeader(label: 'ADDITIONAL INSTRUCTIONS'),
-                      Text('CUSTOM GUIDANCE',
-                          style: AppTextStyles.labelMd
-                              .copyWith(color: colors.textSecondary)),
-                      const SizedBox(height: 8.0),
-                      TextFormField(
-                        controller: _instructionsController,
-                        maxLines: 4,
-                        style: AppTextStyles.bodyLg
-                            .copyWith(color: colors.textPrimary),
-                        decoration: InputDecoration(
-                          hintText:
-                              'e.g. Always begin with a timestamp block. Never output friendly greetings.',
-                          hintStyle: AppTextStyles.bodyLg
-                              .copyWith(color: colors.textMuted),
-                          filled: true,
-                          fillColor: colors.bgInput,
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(4.0),
-                              borderSide:
-                                  BorderSide(color: colors.borderDefault)),
-                        ),
-                      ),
-                      const SizedBox(height: 40.0),
-                      ElevatedButton(
-                        onPressed: _saveForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.luxuryOrange,
-                          minimumSize: const Size.fromHeight(52),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4.0)),
-                          elevation: 0,
-                        ),
-                        child: Text(
-                          widget.isEdit ? 'SAVE CHANGES' : 'CREATE PROFILE',
-                          style: AppTextStyles.labelLg.copyWith(
-                              color: AppColors.white, letterSpacing: 1.5),
-                        ),
-                      ),
-                      const SizedBox(height: 40.0),
-                    ],
-                  ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const FormSectionHeader(label: 'IDENTITY'),
+                    CustomTextField(
+                      label: 'PROFILE NAME',
+                      hintText: 'e.g. Technical Executive Voice',
+                      controller: _nameController,
+                    ),
+                    const SizedBox(height: 16),
+                    CustomTextField(
+                      label: 'ENTITY NAME',
+                      hintText: 'e.g. Senior Architect',
+                      controller: _entityNameController,
+                    ),
+                    const SizedBox(height: 16),
+                    const FormSectionHeader(label: 'VOICE & TONE'),
+                    SegmentedField<String>(
+                      label: 'BASE TONE',
+                      options: [
+                        SegmentedOption(value: 'formal', label: 'FORMAL'),
+                        SegmentedOption(
+                            value: 'semi_formal', label: 'SEMI-FORMAL'),
+                        SegmentedOption(value: 'casual', label: 'CASUAL'),
+                        SegmentedOption(value: 'punchy', label: 'PUNCHY'),
+                      ],
+                      selectedValue: _tone,
+                      onChanged: (val) => setState(() => _tone = val),
+                    ),
+                    const SizedBox(height: 24),
+                    const FormSectionHeader(label: 'FORMAT'),
+                    SegmentedField<String>(
+                      label: 'EMOJI USAGE',
+                      options: [
+                        SegmentedOption(value: 'none', label: 'NONE'),
+                        SegmentedOption(value: 'minimal', label: 'MINIMAL'),
+                        SegmentedOption(value: 'moderate', label: 'MODERATE'),
+                        SegmentedOption(value: 'heavy', label: 'HEAVY'),
+                      ],
+                      selectedValue: _emojiUsage,
+                      onChanged: (val) => setState(() => _emojiUsage = val),
+                    ),
+                    const SizedBox(height: 24),
+                    SegmentedField<String>(
+                      label: 'STRUCTURE',
+                      options: [
+                        SegmentedOption(value: 'paragraph', label: 'PARAGRAPH'),
+                        SegmentedOption(
+                            value: 'bullet_points', label: 'BULLETS'),
+                      ],
+                      selectedValue: _structure,
+                      onChanged: (val) => setState(() => _structure = val),
+                    ),
+                    const SizedBox(height: 24),
+                    SegmentedField<String>(
+                      label: 'LENGTH',
+                      options: [
+                        SegmentedOption(value: 'short', label: 'SHORT'),
+                        SegmentedOption(value: 'medium', label: 'MEDIUM'),
+                        SegmentedOption(value: 'long', label: 'LONG'),
+                      ],
+                      selectedValue: _lengthPreset,
+                      onChanged: (val) => setState(() => _lengthPreset = val),
+                    ),
+                    const SizedBox(height: 24),
+                    const FormSectionHeader(label: 'ADDITIONAL INSTRUCTIONS'),
+                    CustomTextField(
+                      label: '',
+                      hintText:
+                          'E.g., Never use bullet points, limit paragraphs to 2 sentences...',
+                      controller: _instructionsController,
+                      maxLines: 4,
+                    ),
+                    const SizedBox(height: 48),
+                  ],
                 ),
               ),
             ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: CustomButton(
+            label: widget.isEdit ? 'SAVE CHANGES' : 'CREATE PROFILE',
+            onPressed: _isLoading ? null : _saveForm,
+            isLoading: _isLoading,
+          ),
+        ),
+      ),
     );
   }
 }

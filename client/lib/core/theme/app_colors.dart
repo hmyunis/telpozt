@@ -3,11 +3,32 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  static const Color black = Color(0xFF000000);
-  static const Color voidBg = Color(0xFF0A0A0A);
-  static const Color obsidian = Color(0xFF111111);
-  static const Color graphite = Color(0xFF1A1A1A);
-  static const Color iron = Color(0xFF2A2A2A);
+  static const Color pureBlack = Color(0xFF000000);
+  static const Color appBackground = Color(0xFF050505);
+  static const Color surfaceDark = Color(0xFF121212);
+  static const Color surfaceLight = Color(0xFF1E1E1E);
+  static const Color borderSubtle = Color(0xFF2A2A2A);
+  static const Color borderHighlight = Color(0xFF3D3D3D);
+  static const Color textPrimary = Color(0xFFF5F5F5);
+  static const Color textSecondary = Color(0xFFA3A3A3);
+  static const Color textMuted = Color(0xFF666666);
+  static const Color brandOrange = Color(0xFFFF6B00);
+  static const Color brandOrangeDark = Color(0xFFCC5500);
+  static const Color brandOrangeDim = Color(0x33FF6B00);
+  static const Color success = Color(0xFF10B981);
+  static const Color successDim = Color(0x2210B981);
+  static const Color danger = Color(0xFFEF4444);
+  static const Color dangerDim = Color(0x22EF4444);
+  static const Color warning = Color(0xFFF59E0B);
+  static const Color info = Color(0xFF3B82F6);
+  static const Color scheduled = Color(0xFFA855F7);
+
+  // Backward-compatible aliases used by the existing app.
+  static const Color black = pureBlack;
+  static const Color voidBg = appBackground;
+  static const Color obsidian = surfaceDark;
+  static const Color graphite = surfaceLight;
+  static const Color iron = borderSubtle;
   static const Color steelDark = Color(0xFF3D3D3D);
   static const Color steelLight = Color(0xFFBEBBB8);
   static const Color ash = Color(0xFF6B6B6B);
@@ -15,15 +36,29 @@ class AppColors {
   static const Color white = Color(0xFFFFFFFF);
   static const Color offWhite = Color(0xFFF5F5F0);
   static const Color luxuryOrange = Color(0xFFE8660A);
-  static const Color neonOrange = Color(0xFFFF6B00);
+  static const Color neonOrange = brandOrange;
   static const Color ember = Color(0xFFC4520A);
   static const Color goldSand = Color(0xFFD4893A);
   static const Color goldPale = Color(0xFFF0C070);
-  static const Color danger = Color(0xFFE83A2A);
-  static const Color success = Color(0xFF2AE87A);
-  static const Color warning = Color(0xFFFFB020);
-  static const Color info = Color(0xFF4A9EFF);
-  static const Color scheduled = Color(0xFFA855F7);
+
+  static AppColorsExtension schemeOf(BuildContext context) =>
+      Theme.of(context).extension<AppColorsExtension>()!;
+
+  static Color appBackgroundOf(BuildContext context) => schemeOf(context).bgApp;
+  static Color surfaceOf(BuildContext context) => schemeOf(context).bgSurface;
+  static Color elevatedOf(BuildContext context) => schemeOf(context).bgElevated;
+  static Color inputOf(BuildContext context) => schemeOf(context).bgInput;
+  static Color borderSubtleOf(BuildContext context) =>
+      schemeOf(context).borderDefault;
+  static Color borderHighlightOf(BuildContext context) =>
+      schemeOf(context).textDisabled;
+  static Color textPrimaryOf(BuildContext context) =>
+      schemeOf(context).textPrimary;
+  static Color textSecondaryOf(BuildContext context) =>
+      schemeOf(context).textSecondary;
+  static Color textMutedOf(BuildContext context) => schemeOf(context).textMuted;
+  static Color textOnBrandOf(BuildContext context) =>
+      schemeOf(context).textOnBrand;
 }
 
 class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
@@ -116,36 +151,36 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
   }
 
   static const AppColorsExtension dark = AppColorsExtension(
-    bgApp: AppColors.voidBg,
-    bgSurface: AppColors.obsidian,
-    bgElevated: AppColors.graphite,
-    bgInput: AppColors.iron,
-    borderDefault: AppColors.iron,
-    borderFocus: AppColors.neonOrange,
-    textPrimary: AppColors.white,
-    textSecondary: AppColors.silver,
-    textMuted: AppColors.ash,
-    textDisabled: AppColors.steelDark,
-    textOnBrand: AppColors.white,
-    accentPrimary: AppColors.luxuryOrange,
-    accentElectric: AppColors.neonOrange,
-    accentShimmer: AppColors.goldSand,
+    bgApp: AppColors.appBackground,
+    bgSurface: AppColors.surfaceDark,
+    bgElevated: AppColors.surfaceLight,
+    bgInput: AppColors.surfaceLight,
+    borderDefault: AppColors.borderSubtle,
+    borderFocus: AppColors.brandOrange,
+    textPrimary: AppColors.textPrimary,
+    textSecondary: AppColors.textSecondary,
+    textMuted: AppColors.textMuted,
+    textDisabled: AppColors.borderHighlight,
+    textOnBrand: AppColors.pureBlack,
+    accentPrimary: AppColors.brandOrange,
+    accentElectric: AppColors.brandOrange,
+    accentShimmer: AppColors.borderHighlight,
   );
 
   static const AppColorsExtension light = AppColorsExtension(
-    bgApp: AppColors.offWhite,
-    bgSurface: AppColors.white,
-    bgElevated: AppColors.white,
-    bgInput: Color(0xFFF0EFED),
-    borderDefault: Color(0xFFDDDBD8),
-    borderFocus: AppColors.luxuryOrange,
+    bgApp: Color(0xFFF6F1EA),
+    bgSurface: Color(0xFFF8F4EE),
+    bgElevated: Color(0xFFF1EAE0),
+    bgInput: Color(0xFFEEE6DB),
+    borderDefault: Color(0xFFD8CEC1),
+    borderFocus: AppColors.brandOrange,
     textPrimary: Color(0xFF0A0A0A),
-    textSecondary: Color(0xFF4A4845),
-    textMuted: Color(0xFF8A8785),
-    textDisabled: Color(0xFFBEBBB8),
-    textOnBrand: AppColors.white,
-    accentPrimary: AppColors.luxuryOrange,
-    accentElectric: AppColors.ember,
+    textSecondary: Color(0xFF4E463D),
+    textMuted: Color(0xFF857A6F),
+    textDisabled: Color(0xFFB9AD9D),
+    textOnBrand: AppColors.pureBlack,
+    accentPrimary: AppColors.brandOrange,
+    accentElectric: AppColors.brandOrangeDark,
     accentShimmer: AppColors.goldSand,
   );
 }

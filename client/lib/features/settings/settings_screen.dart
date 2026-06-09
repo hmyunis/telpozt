@@ -1,26 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/router/routes.dart';
 import '../../core/api/api_client.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../../shared/providers/user_provider.dart';
 import '../../shared/widgets/confirmation_dialog.dart';
-import '../../shared/widgets/form_section_header.dart';
-import '../../shared/widgets/pull_to_refresh.dart';
-import '../../shared/widgets/snackbar_helper.dart';
+import '../../shared/widgets/custom_switch.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
+
+  static final Future<PackageInfo> _packageInfoFuture =
+      PackageInfo.fromPlatform();
 
   void _confirmLogout(BuildContext context, WidgetRef ref) {
     showDialog(
       context: context,
       builder: (context) => ConfirmationDialog(
-        title: 'Sign Out?',
+        title: 'LOG OUT?',
         body: 'This will terminate your current console session.',
-        confirmLabel: 'SIGN OUT',
+        confirmLabel: 'LOG OUT',
         onConfirm: () async {
           await ref.read(authNotifierProvider.notifier).logout();
         },
@@ -28,203 +31,239 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showTimezonePickerBottomSheet(BuildContext context, WidgetRef ref) {
-    final List<String> timezones = [
-      'Africa/Addis_Ababa',
-      'UTC',
-      'America/New_York',
-      'Europe/London',
-      'Asia/Tokyo',
-      'Asia/Dubai',
-      'Australia/Sydney',
-    ];
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final colors = Theme.of(context).extension<AppColorsExtension>()!;
-        return SafeArea(
-          top: false,
-          child: FractionallySizedBox(
-            heightFactor: 0.72,
-            alignment: Alignment.bottomCenter,
-            child: Material(
-              color: colors.bgElevated,
-              borderRadius: const BorderRadius.only(topLeft: Radius.circular(12.0), topRight: Radius.circular(12.0)),
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 36,
-                      height: 4,
-                      margin: const EdgeInsets.only(top: 12.0, bottom: 16.0),
-                      decoration: BoxDecoration(color: colors.borderDefault, borderRadius: BorderRadius.circular(2.0)),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: Text('SELECT TIMEZONE', style: AppTextStyles.heading2.copyWith(color: colors.textPrimary)),
-                  ),
-                  const SizedBox(height: 12.0),
-                  Divider(color: colors.borderDefault, height: 1.0),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24.0),
-                      itemCount: timezones.length,
-                      itemBuilder: (context, idx) {
-                        final tz = timezones[idx];
-                        final current = ref.watch(userTimezoneProvider);
-                        final isSelected = tz == current;
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          title: Text(tz, style: AppTextStyles.bodyLg.copyWith(color: colors.textPrimary)),
-                          trailing: isSelected ? const Icon(Icons.check, color: AppColors.luxuryOrange) : null,
-                          onTap: () async {
-                            try {
-                              await ref.read(userNotifierProvider.notifier).updateTimezone(tz);
-                              if (context.mounted) {
-                                SnackbarHelper.show(context, message: 'Timezone parameters updated.', type: SnackbarType.success);
-                                Navigator.pop(context);
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                            SnackbarHelper.showError(context, e);
-                              }
-                            }
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+  Future<void> _openAuthorSite(BuildContext context) async {
+    final uri = Uri.parse('https://hamdi.dev.et');
+    final launched = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
     );
+    if (!launched && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open the author website.')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = Theme.of(context).extension<AppColorsExtension>()!;
     final user = ref.watch(userNotifierProvider);
     final prefs = ref.watch(prefsStorageProvider);
 
     return Scaffold(
-      backgroundColor: colors.bgApp,
       appBar: AppBar(
-        title: Text('SETTINGS', style: AppTextStyles.heading1.copyWith(color: colors.textPrimary, letterSpacing: 1.5)),
+        title: const Text('Settings', style: AppTextStyles.heading1),
         automaticallyImplyLeading: false,
       ),
-      body: PullToRefresh(
-        onRefresh: () async {
-          await ref.read(authNotifierProvider.notifier).checkToken();
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Column(
+      body: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const FormSectionHeader(label: 'ACCOUNT PARAMETERS'),
-            _buildActionRow(colors, icon: Icons.person_outline, label: 'Username', value: user?.username ?? '@admin'),
-            _buildActionRow(colors, icon: Icons.schedule, label: 'Timezone', value: user?.timezone ?? 'UTC', onTap: () => _showTimezonePickerBottomSheet(context, ref)),
-            _buildActionRow(colors, icon: Icons.lock_outline, label: 'Change Passphrase', onTap: () => context.push(Routes.changePassword)),
-            const FormSectionHeader(label: 'APP PREFERENCES'),
-            _buildToggleRow(colors, icon: Icons.dark_mode_outlined, label: 'Dark Mode Force', value: prefs.isDarkMode, onChanged: (val) async {
-              await ref.read(prefsStorageProvider).setDarkMode(val);
-              ref.invalidate(prefsStorageProvider);
-            }),
-            _buildToggleRow(colors, icon: Icons.fingerprint, label: 'App Biometric Shield', value: prefs.isBiometricEnabled, onChanged: (val) async {
-              await ref.read(prefsStorageProvider).setBiometricEnabled(val);
-              ref.invalidate(prefsStorageProvider);
-            }),
-            const FormSectionHeader(label: 'ABOUT CONSOLE'),
-            _buildActionRow(colors, icon: Icons.info_outline, label: 'Terminal Version', value: 'v1.0.0-release'),
-            _buildActionRow(colors, icon: Icons.cloud_queue_outlined, label: 'Host Core Gateway', value: 'api.telpozt.io'),
-            const SizedBox(height: 40.0),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0),
-              child: ElevatedButton.icon(
-                onPressed: () => _confirmLogout(context, ref),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colors.bgSurface,
-                  foregroundColor: AppColors.danger,
-                  side: const BorderSide(color: AppColors.danger, width: 1.0),
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
-                  elevation: 0,
+            _buildSectionTitle(context, 'ACCOUNT'),
+            _buildCardGroup(context, [
+              _SettingsRow(
+                icon: Icons.person_outline,
+                title: 'Username',
+                subtitle: '@${user?.username ?? "admin"}',
+              ),
+              _SettingsRow(
+                icon: Icons.language,
+                title: 'Timezone',
+                trailingText: user?.timezone ?? 'UTC',
+                onTap: () {}, // Timezone picker can be triggered here
+              ),
+              _SettingsRow(
+                icon: Icons.key_outlined,
+                title: 'Change Password',
+                onTap: () => context.push(Routes.changePassword),
+                showChevron: true,
+              ),
+            ]),
+            const SizedBox(height: 32),
+            _buildSectionTitle(context, 'APP PREFERENCES'),
+            _buildCardGroup(context, [
+              _SettingsRow(
+                icon: Icons.dark_mode_outlined,
+                title: 'Dark Mode',
+                subtitle: 'Force AMOLED black',
+                trailingWidget: CustomSwitch(
+                  value: prefs.isDarkMode,
+                  onChanged: (val) async {
+                    await ref.read(prefsStorageProvider).setDarkMode(val);
+                    ref.invalidate(prefsStorageProvider);
+                  },
                 ),
-                icon: const Icon(Icons.logout, size: 20),
-                label: Text('LOG OUT TERMINAL SESSION', style: AppTextStyles.labelLg.copyWith(letterSpacing: 1.5)),
+              ),
+              _SettingsRow(
+                icon: Icons.lock_outline,
+                title: 'App Lock',
+                subtitle: 'Require biometrics',
+                trailingWidget: CustomSwitch(
+                  value: prefs.isBiometricEnabled,
+                  onChanged: (val) async {
+                    await ref
+                        .read(prefsStorageProvider)
+                        .setBiometricEnabled(val);
+                    ref.invalidate(prefsStorageProvider);
+                  },
+                ),
+              ),
+            ]),
+            const SizedBox(height: 32),
+            _buildSectionTitle(context, 'ABOUT'),
+            _buildCardGroup(context, [
+              FutureBuilder<PackageInfo>(
+                future: _packageInfoFuture,
+                builder: (context, snapshot) {
+                  final packageInfo = snapshot.data;
+                  final version = packageInfo == null
+                      ? 'Loading...'
+                      : 'v${packageInfo.version}+${packageInfo.buildNumber}';
+                  return _SettingsRow(
+                    icon: Icons.info_outline,
+                    title: 'Version',
+                    trailingText: version,
+                  );
+                },
+              ),
+              _SettingsRow(
+                icon: Icons.person_outline,
+                title: 'Author',
+                trailingText: 'Hamdi M.',
+                onTap: () => _openAuthorSite(context),
+              ),
+              _SettingsRow(
+                icon: Icons.wifi_tethering,
+                title: 'Connection Setup',
+                subtitle: 'Validate backend and Ollama reachability',
+                onTap: () => context.push(Routes.connectionSetup),
+                showChevron: true,
+              ),
+            ]),
+            const SizedBox(height: 48),
+            GestureDetector(
+              onTap: () => _confirmLogout(context, ref),
+              child: Container(
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceOf(context),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.borderSubtleOf(context)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.logout, color: AppColors.danger, size: 20),
+                    const SizedBox(width: 12),
+                    Text(
+                      'LOG OUT',
+                      style: AppTextStyles.labelLg
+                          .copyWith(color: AppColors.danger),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 60.0),
+            const SizedBox(height: 48),
           ],
-        ),
         ),
       ),
     );
   }
 
-  Widget _buildActionRow(AppColorsExtension colors, {required IconData icon, required String label, String? value, VoidCallback? onTap}) {
+  Widget _buildSectionTitle(BuildContext context, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0, left: 4.0),
+      child: Text(
+        title,
+        style: AppTextStyles.labelMd.copyWith(
+            color: AppColors.textSecondaryOf(context), letterSpacing: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildCardGroup(BuildContext context, List<Widget> children) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOf(context),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.borderSubtleOf(context)),
+      ),
+      child: Column(
+        children: children.asMap().entries.map((entry) {
+          final isLast = entry.key == children.length - 1;
+          return Column(
+            children: [
+              entry.value,
+              if (!isLast) const Divider(height: 1, indent: 56, endIndent: 16),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _SettingsRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final String? trailingText;
+  final Widget? trailingWidget;
+  final VoidCallback? onTap;
+  final bool showChevron;
+
+  const _SettingsRow({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.trailingText,
+    this.trailingWidget,
+    this.onTap,
+    this.showChevron = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      child: Container(
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        decoration: BoxDecoration(border: Border(bottom: BorderSide(color: colors.borderDefault))),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Icon(icon, color: colors.textMuted, size: 20),
-                const SizedBox(width: 12.0),
-                Text(label, style: AppTextStyles.bodyLg.copyWith(color: colors.textPrimary)),
-              ],
-            ),
-            Row(
-              children: [
-                if (value != null) ...[
-                  Text(value, style: AppTextStyles.bodyMd.copyWith(color: colors.textSecondary)),
-                  const SizedBox(width: 8.0),
+            Icon(icon, color: AppColors.textMutedOf(context), size: 24),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: AppTextStyles.heading3
+                          .copyWith(color: AppColors.textPrimaryOf(context))),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 4),
+                    Text(subtitle!,
+                        style: AppTextStyles.bodySm
+                            .copyWith(color: AppColors.textMutedOf(context))),
+                  ],
                 ],
-                if (onTap != null) Icon(Icons.chevron_right, color: colors.textDisabled, size: 18),
-              ],
+              ),
             ),
+            if (trailingText != null)
+              Text(trailingText!,
+                  style: AppTextStyles.bodyMd
+                      .copyWith(color: AppColors.textSecondaryOf(context))),
+            if (trailingWidget != null) trailingWidget!,
+            if (showChevron)
+              Padding(
+                padding: EdgeInsets.only(left: 8.0),
+                child: Icon(Icons.chevron_right,
+                    color: AppColors.textMutedOf(context), size: 20),
+              ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildToggleRow(AppColorsExtension colors, {required IconData icon, required String label, required bool value, required ValueChanged<bool> onChanged}) {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: colors.borderDefault))),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: colors.textMuted, size: 20),
-              const SizedBox(width: 12.0),
-              Text(label, style: AppTextStyles.bodyLg.copyWith(color: colors.textPrimary)),
-            ],
-          ),
-          Switch(
-            value: value,
-            activeThumbColor: AppColors.luxuryOrange,
-            inactiveTrackColor: colors.borderDefault,
-            onChanged: onChanged,
-          ),
-        ],
       ),
     );
   }

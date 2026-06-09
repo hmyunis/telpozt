@@ -32,26 +32,98 @@ class ScaffoldWithNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColorsExtension>()!;
     final selectedIndex = _getSelectedIndex(context);
+
     return Scaffold(
-      backgroundColor: colors.bgApp,
+      backgroundColor: AppColors.appBackgroundOf(context),
       body: child,
       bottomNavigationBar: Container(
-        decoration: BoxDecoration(border: Border(top: BorderSide(color: colors.borderDefault, width: 1.0))),
-        child: BottomNavigationBar(
-          currentIndex: selectedIndex,
-          onTap: (index) => _onTabTapped(index, context),
-          backgroundColor: colors.bgSurface,
-          selectedItemColor: AppColors.luxuryOrange,
-          unselectedItemColor: colors.textDisabled,
-          selectedLabelStyle: AppTextStyles.labelSm.copyWith(letterSpacing: 0.6),
-          unselectedLabelStyle: AppTextStyles.labelSm.copyWith(letterSpacing: 0.6),
-          type: BottomNavigationBarType.fixed,
-          items: const [
-            BottomNavigationBarItem(icon: Icon(Icons.workspaces_outlined, size: 24), activeIcon: Icon(Icons.workspaces, color: AppColors.luxuryOrange, size: 24), label: 'WORKSPACES'),
-            BottomNavigationBarItem(icon: Icon(Icons.style_outlined, size: 24), activeIcon: Icon(Icons.style, color: AppColors.luxuryOrange, size: 24), label: 'PROFILES'),
-            BottomNavigationBarItem(icon: Icon(Icons.settings_outlined, size: 24), activeIcon: Icon(Icons.settings, color: AppColors.luxuryOrange, size: 24), label: 'SETTINGS'),
+        height: 80,
+        decoration: BoxDecoration(
+          color: AppColors.appBackgroundOf(context),
+          border: Border(
+              top: BorderSide(
+                  color: AppColors.borderSubtleOf(context), width: 1.0)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _NavItem(
+              icon: Icons.dashboard_customize_outlined,
+              label: 'WORKSPACES',
+              isSelected: selectedIndex == 0,
+              onTap: () => _onTabTapped(0, context),
+            ),
+            _NavItem(
+              icon: Icons.account_circle_outlined,
+              label: 'PROFILES',
+              isSelected: selectedIndex == 1,
+              onTap: () => _onTabTapped(1, context),
+            ),
+            _NavItem(
+              icon: Icons.settings_outlined,
+              label: 'SETTINGS',
+              isSelected: selectedIndex == 2,
+              onTap: () => _onTabTapped(2, context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 100,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              height: 2,
+              width: isSelected ? 60 : 0,
+              color: AppColors.brandOrange,
+            ),
+            const Spacer(),
+            AnimatedScale(
+              scale: isSelected ? 1.1 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                icon,
+                color: isSelected
+                    ? AppColors.brandOrange
+                    : AppColors.textMutedOf(context),
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: AppTextStyles.labelSm.copyWith(
+                color: isSelected
+                    ? AppColors.brandOrange
+                    : AppColors.textMutedOf(context),
+              ),
+            ),
+            const Spacer(),
           ],
         ),
       ),

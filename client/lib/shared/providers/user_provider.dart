@@ -28,16 +28,19 @@ class UserNotifier extends StateNotifier<User?> {
   }
 }
 
-final userNotifierProvider = StateNotifierProvider<UserNotifier, User?>((ref) => UserNotifier(ref));
+final userNotifierProvider =
+    StateNotifierProvider<UserNotifier, User?>((ref) => UserNotifier(ref));
 
-final userTimezoneProvider = Provider<String>((ref) => ref.watch(userNotifierProvider)?.timezone ?? 'UTC');
+final userTimezoneProvider = Provider<String>(
+    (ref) => ref.watch(userNotifierProvider)?.timezone ?? 'UTC');
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
   final SecureStorage _secureStorage;
   final AuthRepository _repository;
 
-  AuthNotifier(this._ref, this._secureStorage, this._repository) : super(AuthState.checking()) {
+  AuthNotifier(this._ref, this._secureStorage, this._repository)
+      : super(AuthState.checking()) {
     checkToken();
   }
 
@@ -49,7 +52,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     try {
       final response = await _ref.read(apiClientProvider).get('/user/me');
-      _ref.read(userNotifierProvider.notifier).setUser(User.fromJson(response.data['data'] as Map<String, dynamic>));
+      _ref.read(userNotifierProvider.notifier).setUser(
+          User.fromJson(response.data['data'] as Map<String, dynamic>));
       state = AuthState.authenticated();
     } catch (_) {
       await _secureStorage.deleteToken();
@@ -79,6 +83,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void setUnauthenticated() => state = AuthState.unauthenticated();
 }
 
-final authNotifierProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref, ref.watch(secureStorageProvider), ref.watch(authRepositoryProvider));
+final authNotifierProvider =
+    StateNotifierProvider<AuthNotifier, AuthState>((ref) {
+  return AuthNotifier(
+    ref,
+    ref.watch(secureStorageProvider),
+    ref.read(authRepositoryProvider),
+  );
 });

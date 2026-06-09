@@ -4,40 +4,117 @@ import '../../core/theme/app_text_styles.dart';
 
 class StatusBadge extends StatelessWidget {
   final String state;
-  const StatusBadge({super.key, required this.state});
+  final bool showDot;
 
-  ({Color bg, Color border, Color text, String label}) _getBadgeProperties() {
+  const StatusBadge({super.key, required this.state, this.showDot = true});
+
+  ({Color bg, Color border, Color text, String label}) _getBadgeProperties(
+      BuildContext context) {
     switch (state.toLowerCase()) {
       case 'active':
       case 'posted':
-        return (bg: AppColors.success.withValues(alpha: 0.15), border: AppColors.success, text: AppColors.success, label: 'POSTED');
+      case 'published':
+        return (
+          bg: AppColors.successDim,
+          border: AppColors.success.withValues(alpha: 0.3),
+          text: AppColors.success,
+          label: state.toUpperCase()
+        );
+      case 'ready':
+        return (
+          bg: AppColors.brandOrangeDim,
+          border: AppColors.brandOrange.withValues(alpha: 0.3),
+          text: AppColors.brandOrange,
+          label: 'READY'
+        );
+      case 'generating':
+        return (
+          bg: AppColors.info.withValues(alpha: 0.12),
+          border: AppColors.info.withValues(alpha: 0.3),
+          text: AppColors.info,
+          label: 'GENERATING'
+        );
       case 'approved':
-        return (bg: AppColors.info.withValues(alpha: 0.15), border: AppColors.info, text: AppColors.info, label: 'APPROVED');
+        return (
+          bg: AppColors.scheduled.withValues(alpha: 0.15),
+          border: AppColors.scheduled.withValues(alpha: 0.3),
+          text: AppColors.scheduled,
+          label: 'APPROVED'
+        );
       case 'scheduled':
-        return (bg: AppColors.scheduled.withValues(alpha: 0.15), border: AppColors.scheduled, text: AppColors.scheduled, label: 'SCHEDULED');
+        return (
+          bg: AppColors.scheduled.withValues(alpha: 0.15),
+          border: AppColors.scheduled.withValues(alpha: 0.3),
+          text: AppColors.scheduled,
+          label: 'SCHEDULED'
+        );
       case 'posting':
-        return (bg: AppColors.neonOrange.withValues(alpha: 0.20), border: AppColors.neonOrange, text: AppColors.neonOrange, label: 'POSTING');
+      case 'posting now':
+        return (
+          bg: AppColors.brandOrangeDim,
+          border: AppColors.brandOrange.withValues(alpha: 0.3),
+          text: AppColors.brandOrange,
+          label: 'POSTING NOW'
+        );
       case 'cancelled':
-        return (bg: AppColors.danger.withValues(alpha: 0.10), border: AppColors.danger.withValues(alpha: 0.30), text: AppColors.danger.withValues(alpha: 0.60), label: 'CANCELLED');
+        return (
+          bg: AppColors.dangerDim,
+          border: AppColors.danger.withValues(alpha: 0.3),
+          text: AppColors.danger,
+          label: 'CANCELLED'
+        );
       case 'failed':
-        return (bg: AppColors.danger.withValues(alpha: 0.15), border: AppColors.danger, text: AppColors.danger, label: 'FAILED');
-      case 'manual_review':
-        return (bg: AppColors.warning.withValues(alpha: 0.15), border: AppColors.warning, text: AppColors.warning, label: 'MANUAL REVIEW');
+        return (
+          bg: AppColors.dangerDim,
+          border: AppColors.danger.withValues(alpha: 0.3),
+          text: AppColors.danger,
+          label: 'FAILED'
+        );
       case 'paused':
-        return (bg: AppColors.warning.withValues(alpha: 0.15), border: AppColors.warning, text: AppColors.warning, label: 'PAUSED');
+        return (
+          bg: AppColors.elevatedOf(context),
+          border: AppColors.borderHighlightOf(context),
+          text: AppColors.textMutedOf(context),
+          label: 'PAUSED'
+        );
       case 'draft':
       default:
-        return (bg: AppColors.steelDark.withValues(alpha: 0.5), border: AppColors.steelDark, text: AppColors.ash, label: 'DRAFT');
+        return (
+          bg: AppColors.elevatedOf(context),
+          border: AppColors.borderHighlightOf(context),
+          text: AppColors.textSecondaryOf(context),
+          label: 'DRAFT'
+        );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final props = _getBadgeProperties();
+    final props = _getBadgeProperties(context);
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 10.0),
-      decoration: BoxDecoration(color: props.bg, borderRadius: BorderRadius.circular(100.0), border: Border.all(color: props.border, width: 1.0)),
-      child: Text(props.label, style: AppTextStyles.labelSm.copyWith(color: props.text, letterSpacing: 0.6)),
+      decoration: BoxDecoration(
+        color: props.bg,
+        borderRadius: BorderRadius.circular(100.0),
+        border: Border.all(color: props.border, width: 1.0),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (showDot) ...[
+            Container(
+              width: 6,
+              height: 6,
+              decoration:
+                  BoxDecoration(color: props.text, shape: BoxShape.circle),
+            ),
+            const SizedBox(width: 6),
+          ],
+          Text(props.label,
+              style: AppTextStyles.labelSm
+                  .copyWith(color: props.text, letterSpacing: 0.6)),
+        ],
+      ),
     );
   }
 }

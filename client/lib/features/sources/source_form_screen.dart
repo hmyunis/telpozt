@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
+import '../../shared/widgets/custom_text_field.dart';
 import '../../shared/widgets/form_section_header.dart';
 import '../../shared/widgets/loading_view.dart';
 import '../../shared/widgets/pull_to_refresh.dart';
@@ -30,6 +31,8 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _channelController = TextEditingController();
   final _displayController = TextEditingController();
+  final _messageCountController = TextEditingController();
+  final _lookbackDaysController = TextEditingController();
   String _priority = 'normal';
   bool _isLoading = false;
   bool _isActive = true;
@@ -46,6 +49,8 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
   void dispose() {
     _channelController.dispose();
     _displayController.dispose();
+    _messageCountController.dispose();
+    _lookbackDaysController.dispose();
     super.dispose();
   }
 
@@ -56,15 +61,25 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
       final item = list.firstWhere((e) => e.id == widget.sourceId);
       _channelController.text = item.channelId;
       _displayController.text = item.displayName ?? '';
+      _messageCountController.text =
+          item.defaultScrapeMessageCount?.toString() ?? '';
+      _lookbackDaysController.text = item.defaultLookbackDays?.toString() ?? '';
       _priority = item.priority;
       _isActive = item.isActive;
     } catch (e) {
       if (mounted) {
-        SnackbarHelper.showError(context, e, prefix: 'Failed to load source record');
+        SnackbarHelper.showError(context, e,
+            prefix: 'Failed to load source record');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  int? _parseOptionalInt(TextEditingController controller) {
+    final raw = controller.text.trim();
+    if (raw.isEmpty) return null;
+    return int.tryParse(raw);
   }
 
   Future<void> _saveForm() async {
@@ -72,6 +87,9 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
 
     setState(() => _isLoading = true);
     try {
+      final defaultScrapeMessageCount =
+          _parseOptionalInt(_messageCountController);
+      final defaultLookbackDays = _parseOptionalInt(_lookbackDaysController);
       if (widget.isEdit && widget.sourceId != null) {
         await ref.read(sourcesRepositoryProvider).updateSource(
               workspaceId: widget.workspaceId,
@@ -79,6 +97,8 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
               priority: _priority,
               isActive: _isActive,
               displayName: _displayController.text.trim(),
+              defaultScrapeMessageCount: defaultScrapeMessageCount,
+              defaultLookbackDays: defaultLookbackDays,
             );
       } else {
         await ref.read(sourcesRepositoryProvider).addSource(
@@ -86,11 +106,14 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
               channelId: _channelController.text.trim(),
               displayName: _displayController.text.trim(),
               priority: _priority,
+              defaultScrapeMessageCount: defaultScrapeMessageCount,
+              defaultLookbackDays: defaultLookbackDays,
             );
       }
       ref.invalidate(sourcesProvider(widget.workspaceId));
       if (mounted) {
-        SnackbarHelper.show(context, message: 'Source channel registered.', type: SnackbarType.success);
+        SnackbarHelper.show(context,
+            message: 'Source channel registered.', type: SnackbarType.success);
         context.pop();
       }
     } catch (e) {
@@ -102,6 +125,59 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
     }
   }
 
+  Future<void> _deleteSource() async {
+    if (!widget.isEdit || widget.sourceId == null) {
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) {
+            return AlertDialog(
+              title: const Text('Delete source?'),
+              content: const Text(
+                'This will remove the source channel from this workspace. This action cannot be undone.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!confirmed) {
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(sourcesRepositoryProvider).deleteSource(
+            workspaceId: widget.workspaceId,
+            sourceId: widget.sourceId!,
+          );
+      ref.invalidate(sourcesProvider(widget.workspaceId));
+      if (mounted) {
+        context.pop('deleted');
+      }
+    } catch (error) {
+      if (mounted) {
+        SnackbarHelper.showError(context, error);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).extension<AppColorsExtension>()!;
@@ -110,7 +186,7 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
       backgroundColor: colors.bgApp,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -132,75 +208,119 @@ class _SourceFormScreenState extends ConsumerState<SourceFormScreen> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
                   child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const FormSectionHeader(label: 'CHANNEL'),
-                    Text('CHANNEL ID', style: AppTextStyles.labelMd.copyWith(color: colors.textSecondary)),
-                    const SizedBox(height: 8.0),
-                    TextFormField(
-                      controller: _channelController,
-                      enabled: !widget.isEdit,
-                      style: AppTextStyles.mono.copyWith(color: widget.isEdit ? colors.textDisabled : colors.textPrimary),
-                      decoration: InputDecoration(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const FormSectionHeader(label: 'CHANNEL'),
+                      CustomTextField(
+                        label: 'Channel ID',
                         hintText: '@username_handle',
-                        hintStyle: AppTextStyles.bodyLg.copyWith(color: colors.textMuted),
-                        filled: true,
-                        fillColor: colors.bgInput,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4.0), borderSide: BorderSide(color: colors.borderDefault)),
+                        controller: _channelController,
+                        readOnly: widget.isEdit,
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'A target channel handle is required.'
+                            : null,
                       ),
-                      validator: (v) => (v == null || v.trim().isEmpty) ? 'A target channel handle is required.' : null,
-                    ),
-                    const SizedBox(height: 16.0),
-                    Text('DISPLAY NAME', style: AppTextStyles.labelMd.copyWith(color: colors.textSecondary)),
-                    const SizedBox(height: 8.0),
-                    TextFormField(
-                      controller: _displayController,
-                      style: AppTextStyles.bodyLg.copyWith(color: colors.textPrimary),
-                      decoration: InputDecoration(
+                      const SizedBox(height: 16.0),
+                      CustomTextField(
+                        label: 'Display Name',
                         hintText: 'e.g. Technology Wire',
-                        hintStyle: AppTextStyles.bodyLg.copyWith(color: colors.textMuted),
-                        filled: true,
-                        fillColor: colors.bgInput,
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(4.0), borderSide: BorderSide(color: colors.borderDefault)),
+                        controller: _displayController,
                       ),
-                    ),
-                    const FormSectionHeader(label: 'PRIORITY'),
-                    SegmentedField<String>(
-                      label: 'Scrape Tier Priority',
-                      options: [
-                        SegmentedOption(value: 'high', label: 'High'),
-                        SegmentedOption(value: 'normal', label: 'Normal'),
-                        SegmentedOption(value: 'low', label: 'Low'),
+                      const FormSectionHeader(label: 'PRIORITY'),
+                      SegmentedField<String>(
+                        label: 'Scrape Tier Priority',
+                        options: [
+                          SegmentedOption(value: 'high', label: 'High'),
+                          SegmentedOption(value: 'normal', label: 'Normal'),
+                          SegmentedOption(value: 'low', label: 'Low'),
+                        ],
+                        selectedValue: _priority,
+                        onChanged: (val) => setState(() => _priority = val),
+                      ),
+                      const FormSectionHeader(label: 'DEFAULT SCRAPE RULE'),
+                      CustomTextField(
+                        label: 'Default Message Count',
+                        hintText: 'e.g. 20',
+                        controller: _messageCountController,
+                        validator: (value) {
+                          final raw = value?.trim() ?? '';
+                          if (raw.isEmpty) return null;
+                          final parsed = int.tryParse(raw);
+                          if (parsed == null || parsed <= 0) {
+                            return 'Enter a positive number.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        label: 'Default Lookback Days',
+                        hintText: 'e.g. 7',
+                        controller: _lookbackDaysController,
+                        validator: (value) {
+                          final raw = value?.trim() ?? '';
+                          if (raw.isEmpty) return null;
+                          final parsed = int.tryParse(raw);
+                          if (parsed == null || parsed <= 0) {
+                            return 'Enter a positive number of days.';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Leave both blank to use the system default. During Find Content you can still override these with a per-run message count or date range.',
+                        style: AppTextStyles.bodySm
+                            .copyWith(color: colors.textSecondary),
+                      ),
+                      const SizedBox(height: 16.0),
+                      SwitchListTile(
+                        value: _isActive,
+                        activeThumbColor: AppColors.luxuryOrange,
+                        onChanged: (value) => setState(() => _isActive = value),
+                        title: Text('ACTIVE',
+                            style: AppTextStyles.labelLg
+                                .copyWith(color: colors.textPrimary)),
+                        subtitle: Text('Enable or disable this source.',
+                            style: AppTextStyles.bodySm
+                                .copyWith(color: colors.textSecondary)),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      const SizedBox(height: 40.0),
+                      ElevatedButton(
+                        onPressed: _saveForm,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.luxuryOrange,
+                          minimumSize: const Size.fromHeight(52),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.0)),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          widget.isEdit ? 'SAVE CHANGES' : 'ADD SOURCE',
+                          style: AppTextStyles.labelLg.copyWith(
+                              color: colors.textOnBrand, letterSpacing: 1.5),
+                        ),
+                      ),
+                      if (widget.isEdit) ...[
+                        const SizedBox(height: 16.0),
+                        OutlinedButton.icon(
+                          onPressed: _deleteSource,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(52),
+                            side: BorderSide(color: AppColors.danger),
+                            foregroundColor: AppColors.danger,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                          ),
+                          icon: Icon(Icons.delete_outline),
+                          label: const Text('DELETE SOURCE'),
+                        ),
                       ],
-                      selectedValue: _priority,
-                      onChanged: (val) => setState(() => _priority = val),
-                    ),
-                    const SizedBox(height: 16.0),
-                    SwitchListTile(
-                      value: _isActive,
-                      activeThumbColor: AppColors.luxuryOrange,
-                      onChanged: (value) => setState(() => _isActive = value),
-                      title: Text('ACTIVE', style: AppTextStyles.labelLg.copyWith(color: colors.textPrimary)),
-                      subtitle: Text('Enable or disable this source.', style: AppTextStyles.bodySm.copyWith(color: colors.textSecondary)),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    const SizedBox(height: 40.0),
-                    ElevatedButton(
-                      onPressed: _saveForm,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.luxuryOrange,
-                        minimumSize: const Size.fromHeight(52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        widget.isEdit ? 'SAVE CHANGES' : 'ADD SOURCE',
-                        style: AppTextStyles.labelLg.copyWith(color: AppColors.white, letterSpacing: 1.5),
-                      ),
-                    ),
-                    const SizedBox(height: 40.0),
-                  ],
-                ),
+                      const SizedBox(height: 40.0),
+                    ],
+                  ),
                 ),
               ),
             ),

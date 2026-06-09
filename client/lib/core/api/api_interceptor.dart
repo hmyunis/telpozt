@@ -11,7 +11,8 @@ class ApiInterceptor extends Interceptor {
   ApiInterceptor(this._ref, this._secureStorage);
 
   @override
-  void onRequest(RequestOptions options, RequestInterceptorHandler handler) async {
+  void onRequest(
+      RequestOptions options, RequestInterceptorHandler handler) async {
     final token = await _secureStorage.getToken();
     if (token != null) {
       options.headers['Authorization'] = 'Bearer $token';
@@ -29,7 +30,8 @@ class ApiInterceptor extends Interceptor {
         );
 
         if (err.response?.statusCode == 401 &&
-            (parsedError.code == 'UNAUTHORIZED' || parsedError.code == 'TOKEN_EXPIRED')) {
+            (parsedError.code == 'UNAUTHORIZED' ||
+                parsedError.code == 'TOKEN_EXPIRED')) {
           await _secureStorage.deleteToken();
           _ref.read(userNotifierProvider.notifier).clearSession();
         }
@@ -46,11 +48,26 @@ class ApiInterceptor extends Interceptor {
     if (err.response?.statusCode == 401) {
       await _secureStorage.deleteToken();
       _ref.read(userNotifierProvider.notifier).clearSession();
-      return handler.reject(DioException(requestOptions: err.requestOptions, error: ApiError(code: 'UNAUTHORIZED', message: 'Session expired. Please log in again.', statusCode: 401)));
+      return handler.reject(DioException(
+          requestOptions: err.requestOptions,
+          error: ApiError(
+              code: 'UNAUTHORIZED',
+              message: 'Session expired. Please log in again.',
+              statusCode: 401)));
     }
-    if (err.type == DioExceptionType.connectionTimeout || err.type == DioExceptionType.receiveTimeout || err.type == DioExceptionType.sendTimeout || err.type == DioExceptionType.connectionError) {
-      return handler.reject(DioException(requestOptions: err.requestOptions, error: ApiError.networkError()));
+    if (err.type == DioExceptionType.connectionTimeout ||
+        err.type == DioExceptionType.receiveTimeout ||
+        err.type == DioExceptionType.sendTimeout ||
+        err.type == DioExceptionType.connectionError) {
+      return handler.reject(DioException(
+          requestOptions: err.requestOptions,
+          error: ApiError.networkError(err.requestOptions.uri)));
     }
-    return handler.reject(DioException(requestOptions: err.requestOptions, error: ApiError(code: 'HTTP_${err.response?.statusCode ?? "ERROR"}', message: err.message ?? 'Unknown system transport issue.', statusCode: err.response?.statusCode)));
+    return handler.reject(DioException(
+        requestOptions: err.requestOptions,
+        error: ApiError(
+            code: 'HTTP_${err.response?.statusCode ?? "ERROR"}',
+            message: err.message ?? 'Unknown system transport issue.',
+            statusCode: err.response?.statusCode)));
   }
 }

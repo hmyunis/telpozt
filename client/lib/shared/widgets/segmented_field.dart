@@ -13,32 +13,60 @@ class SegmentedField<T> extends StatelessWidget {
   final List<SegmentedOption<T>> options;
   final T selectedValue;
   final ValueChanged<T> onChanged;
-  const SegmentedField({super.key, required this.label, required this.options, required this.selectedValue, required this.onChanged});
+
+  const SegmentedField({
+    super.key,
+    required this.label,
+    required this.options,
+    required this.selectedValue,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColorsExtension>()!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(label.toUpperCase(), style: AppTextStyles.labelMd.copyWith(color: colors.textSecondary, letterSpacing: 0.4)),
-        const SizedBox(height: 8.0),
+        if (label.isNotEmpty) ...[
+          Text(
+            label.toUpperCase(),
+            style: AppTextStyles.labelMd
+                .copyWith(color: AppColors.textSecondaryOf(context)),
+          ),
+          const SizedBox(height: 12.0),
+        ],
         Wrap(
-          spacing: 8.0,
-          runSpacing: 8.0,
+          spacing: 12.0,
+          runSpacing: 12.0,
           children: options.map((opt) {
             final isSelected = opt.value == selectedValue;
-            return ChoiceChip(
-              label: Text(opt.label.toUpperCase(), style: AppTextStyles.labelMd.copyWith(color: isSelected ? AppColors.luxuryOrange : colors.textMuted)),
-              selected: isSelected,
-              onSelected: (selected) {
-                if (selected) onChanged(opt.value);
-              },
-              backgroundColor: Colors.transparent,
-              selectedColor: AppColors.luxuryOrange.withValues(alpha: 0.15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0), side: BorderSide(color: isSelected ? AppColors.luxuryOrange : colors.borderDefault, width: isSelected ? 1.5 : 1.0)),
-              elevation: 0,
-              pressElevation: 0,
+            return GestureDetector(
+              onTap: () => onChanged(opt.value),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0, vertical: 10.0),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.brandOrangeDim
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(20.0),
+                  border: Border.all(
+                    color: isSelected
+                        ? AppColors.brandOrange
+                        : AppColors.borderHighlightOf(context),
+                    width: 1.0,
+                  ),
+                ),
+                child: Text(
+                  opt.label.toUpperCase(),
+                  style: AppTextStyles.labelMd.copyWith(
+                    color: isSelected
+                        ? AppColors.brandOrange
+                        : AppColors.textSecondaryOf(context),
+                  ),
+                ),
+              ),
             );
           }).toList(),
         ),

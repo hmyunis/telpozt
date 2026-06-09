@@ -79,16 +79,18 @@ final workspacesNotifierProvider =
 
 class WorkspaceDetails {
   final Workspace workspace;
-  final int queueCount;
+  final int draftsNeedingAttention;
   final int postsToday;
   final int totalPosted;
+  final String? nextScheduledAtUtc;
   final String? styleProfileName;
 
   WorkspaceDetails({
     required this.workspace,
-    required this.queueCount,
+    required this.draftsNeedingAttention,
     required this.postsToday,
     required this.totalPosted,
+    this.nextScheduledAtUtc,
     this.styleProfileName,
   });
 }
@@ -99,17 +101,27 @@ Future<WorkspaceDetails> fetchWorkspaceDetails(Ref ref, int id) async {
   final data = response.data['data'] as Map<String, dynamic>;
   final workspace = Workspace.fromJson(data);
 
-  var queueCount = 0;
+  var draftsNeedingAttention = 0;
   var postsToday = 0;
   var totalPosted = 0;
+  String? nextScheduledAtUtc;
   String? styleProfileName;
 
   try {
-    final statsResponse = await client.get('/workspaces/$id/queue');
-    final queueList = statsResponse.data['data']['items'] as List;
-    queueCount = queueList
-        .where((e) => e['state'] == 'scheduled' || e['state'] == 'approved')
+    final statsResponse = await client.get('/workspaces/$id/drafts');
+    final draftList = statsResponse.data['data']['items'] as List;
+    draftsNeedingAttention = draftList
+        .where((e) => e['status'] == 'ready' || e['status'] == 'failed')
         .length;
+    final scheduledDrafts = draftList
+        .where(
+            (e) => e['status'] == 'scheduled' && e['scheduled_at_utc'] != null)
+        .toList()
+      ..sort((a, b) => (a['scheduled_at_utc'] as String)
+          .compareTo(b['scheduled_at_utc'] as String));
+    if (scheduledDrafts.isNotEmpty) {
+      nextScheduledAtUtc = scheduledDrafts.first['scheduled_at_utc'] as String?;
+    }
   } catch (_) {}
 
   try {
@@ -133,9 +145,10 @@ Future<WorkspaceDetails> fetchWorkspaceDetails(Ref ref, int id) async {
 
   return WorkspaceDetails(
     workspace: workspace,
-    queueCount: queueCount,
+    draftsNeedingAttention: draftsNeedingAttention,
     postsToday: postsToday,
     totalPosted: totalPosted,
+    nextScheduledAtUtc: nextScheduledAtUtc,
     styleProfileName: styleProfileName,
   );
 }
@@ -145,7 +158,19 @@ final workspaceDetailProvider =
   return fetchWorkspaceDetails(ref, id);
 });
 
-Future<void> triggerManualScrape(WidgetRef ref, int workspaceId) async {
+Future<List<Map<String, dynamic>>> triggerManualScrape(
+  WidgetRef ref,
+  int workspaceId, {
+  int? messageCount,
+  String? fromDateUtc,
+  String? toDateUtc,
+}) async {
   final client = ref.read(apiClientProvider);
-  await client.post('/workspaces/$workspaceId/scrape');
+  final response = await client.post('/workspaces/$workspaceId/scrape', data: {
+    if (messageCount != null) 'message_count': messageCount,
+    if (fromDateUtc != null) 'from_date_utc': fromDateUtc,
+    if (toDateUtc != null) 'to_date_utc': toDateUtc,
+  });
+  final data = response.data['data'];
+  return List<Map<String, dynamic>>.from(data['new_posts'] ?? []);
 }

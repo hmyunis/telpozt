@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS source_channels (
     channel_id      TEXT NOT NULL,
     display_name    TEXT,
     priority        TEXT NOT NULL DEFAULT 'normal' CHECK(priority IN ('high','normal','low')),
+    default_scrape_message_count INTEGER,
+    default_lookback_days INTEGER,
     is_active       INTEGER NOT NULL DEFAULT 1,
     last_scraped_at TEXT,
     last_message_id INTEGER DEFAULT 0,
@@ -58,6 +60,8 @@ CREATE TABLE IF NOT EXISTS scraped_posts (
     source_channel_id INTEGER NOT NULL REFERENCES source_channels(id) ON DELETE CASCADE,
     telegram_message_id INTEGER NOT NULL,
     raw_text        TEXT NOT NULL,
+    original_posted_at_utc TEXT,
+    view_count      INTEGER,
     content_hash    TEXT NOT NULL,
     embedding       BLOB,
     embedding_status TEXT NOT NULL DEFAULT 'pending' CHECK(embedding_status IN ('pending','done','failed')),
@@ -84,6 +88,7 @@ CREATE TABLE IF NOT EXISTS queue (
     scraped_post_id     INTEGER REFERENCES scraped_posts(id) ON DELETE SET NULL,
     raw_source_text     TEXT NOT NULL,
     generated_text      TEXT,
+    last_generation_instruction TEXT,
     generation_status   TEXT NOT NULL DEFAULT 'pending' CHECK(generation_status IN ('pending','generating','done','failed')),
     state               TEXT NOT NULL DEFAULT 'draft' CHECK(state IN ('draft','approved','scheduled','posting','posted','cancelled','failed')),
     scheduled_at_utc    TEXT,
@@ -95,6 +100,14 @@ CREATE TABLE IF NOT EXISTS queue (
 );
 CREATE INDEX IF NOT EXISTS idx_queue_workspace_state ON queue(workspace_id, state);
 CREATE INDEX IF NOT EXISTS idx_queue_scheduled ON queue(scheduled_at_utc) WHERE state = 'scheduled';
+
+CREATE TABLE IF NOT EXISTS queue_source_posts (
+    queue_id         INTEGER NOT NULL REFERENCES queue(id) ON DELETE CASCADE,
+    scraped_post_id  INTEGER NOT NULL REFERENCES scraped_posts(id) ON DELETE CASCADE,
+    position         INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY(queue_id, scraped_post_id)
+);
+CREATE INDEX IF NOT EXISTS idx_queue_source_posts_queue ON queue_source_posts(queue_id, position);
 
 CREATE TABLE IF NOT EXISTS post_history (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,

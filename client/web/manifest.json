@@ -1,11 +1,11 @@
 {
-    "name": "client",
-    "short_name": "client",
+    "name": "Telpozt",
+    "short_name": "Telpozt",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#f7f3eb",
+    "theme_color": "#0a94a6",
+    "description": "Telpozt",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

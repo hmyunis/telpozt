@@ -16,15 +16,24 @@ class WorkspacesListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = Theme.of(context).extension<AppColorsExtension>()!;
     final workspacesAsync = ref.watch(workspacesNotifierProvider);
-    final activeWorkspaceId = ref.watch(activeWorkspaceIdProvider);
 
     return Scaffold(
-      backgroundColor: colors.bgApp,
       appBar: AppBar(
-        title: Text('WORKSPACES', style: AppTextStyles.heading1.copyWith(color: colors.textPrimary, letterSpacing: 1.5)),
+        title: const Text('Workspaces', style: AppTextStyles.heading1),
         automaticallyImplyLeading: false,
+        actions: [
+          Center(
+            child: Padding(
+              padding: const EdgeInsets.only(right: 24.0),
+              child: Text(
+                '${workspacesAsync.valueOrNull?.where((w) => w.isActive).length ?? 0} ACTIVE',
+                style: AppTextStyles.labelSm
+                    .copyWith(color: AppColors.textMutedOf(context)),
+              ),
+            ),
+          )
+        ],
       ),
       body: workspacesAsync.when(
         loading: () => const LoadingView(),
@@ -36,21 +45,12 @@ class WorkspacesListScreen extends ConsumerWidget {
           if (list.isEmpty) {
             return RefreshableEmptyState(
               onRefresh: () async => ref.invalidate(workspacesNotifierProvider),
-              child: Center(
+              child: const Center(
                 child: EmptyStateView(
-                icon: Icons.workspaces_outline,
-                title: 'No Workspaces Yet',
-                subtitle: 'Add your first workspace to start automating a Telegram destination channel.',
-                action: OutlinedButton(
-                  onPressed: () => context.push(Routes.createWorkspace),
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: AppColors.luxuryOrange, width: 1.5),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 14.0),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
-                  ),
-                  child: Text('ADD WORKSPACE', style: AppTextStyles.labelLg.copyWith(color: AppColors.luxuryOrange)),
+                  icon: Icons.workspaces_outline,
+                  title: 'No Workspaces',
+                  subtitle: 'Add your first workspace to start automating.',
                 ),
-              ),
               ),
             );
           }
@@ -58,56 +58,179 @@ class WorkspacesListScreen extends ConsumerWidget {
           return PullToRefresh(
             onRefresh: () async => ref.invalidate(workspacesNotifierProvider),
             child: ListView.builder(
-              physics: const AlwaysScrollableScrollPhysics(),
+              physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics()),
               padding: const EdgeInsets.all(24.0),
               itemCount: list.length,
               itemBuilder: (context, index) {
                 final ws = list[index];
-                final isSelected = ws.id == activeWorkspaceId;
+
                 return GestureDetector(
                   onTap: () {
                     ref.read(activeWorkspaceIdProvider.notifier).state = ws.id;
                     context.push('/workspaces/${ws.id}');
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 12.0),
-                    padding: const EdgeInsets.all(16.0),
+                    margin: const EdgeInsets.only(bottom: 16.0),
                     decoration: BoxDecoration(
-                      color: colors.bgSurface,
-                      borderRadius: BorderRadius.circular(8.0),
-                      border: Border.all(color: isSelected ? AppColors.luxuryOrange : colors.borderDefault, width: isSelected ? 1.5 : 1.0),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: AppColors.luxuryOrange.withValues(alpha: 0.06),
-                                offset: const Offset(-3, 0),
-                              )
-                            ]
-                          : null,
+                      color: AppColors.surfaceOf(context),
+                      borderRadius: BorderRadius.circular(12.0),
+                      border: Border.all(
+                        color: ws.isActive
+                            ? AppColors.brandOrange
+                            : AppColors.borderSubtleOf(context),
+                        width: 1.0,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(ws.name, style: AppTextStyles.heading2.copyWith(color: colors.textPrimary), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    child: IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(
+                            width: 4,
+                            decoration: BoxDecoration(
+                              color: ws.isActive
+                                  ? AppColors.brandOrange
+                                  : Colors.transparent,
+                              borderRadius: const BorderRadius.only(
+                                  topLeft: Radius.circular(12),
+                                  bottomLeft: Radius.circular(12)),
                             ),
-                            StatusBadge(state: ws.isActive ? 'active' : 'paused'),
-                          ],
-                        ),
-                        const SizedBox(height: 6.0),
-                        Row(
-                          children: [
-                            Icon(Icons.alternate_email, color: colors.textMuted, size: 16),
-                            const SizedBox(width: 6.0),
-                            Expanded(
-                              child: Text(ws.targetChannelId, style: AppTextStyles.mono.copyWith(color: colors.textSecondary)),
+                          ),
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20.0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.rocket_launch_outlined,
+                                                color: ws.isActive
+                                                    ? AppColors.brandOrange
+                                                    : AppColors.textMutedOf(
+                                                        context),
+                                                size: 24),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(ws.name,
+                                                      style: AppTextStyles
+                                                          .heading2
+                                                          .copyWith(
+                                                              color: AppColors
+                                                                  .textPrimaryOf(
+                                                                      context))),
+                                                  const SizedBox(height: 2),
+                                                  Text(ws.targetChannelId,
+                                                      style: AppTextStyles
+                                                          .bodySm
+                                                          .copyWith(
+                                                              color: AppColors
+                                                                  .textMutedOf(
+                                                                      context))),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      StatusBadge(
+                                          state:
+                                              ws.isActive ? 'active' : 'paused',
+                                          showDot: true),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                AppColors.elevatedOf(context),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color:
+                                                    AppColors.borderHighlightOf(
+                                                        context)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text('FLOW',
+                                                  style: AppTextStyles.labelSm
+                                                      .copyWith(
+                                                          color: AppColors
+                                                              .textMutedOf(
+                                                                  context))),
+                                              const SizedBox(height: 4),
+                                              Text('Draft workflow',
+                                                  style: AppTextStyles.bodyMd
+                                                      .copyWith(
+                                                          color: AppColors
+                                                              .textPrimaryOf(
+                                                                  context))),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color:
+                                                AppColors.elevatedOf(context),
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                                color:
+                                                    AppColors.borderHighlightOf(
+                                                        context)),
+                                          ),
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text('LAST POST',
+                                                  style: AppTextStyles.labelSm
+                                                      .copyWith(
+                                                          color: AppColors
+                                                              .textMutedOf(
+                                                                  context))),
+                                              const SizedBox(height: 4),
+                                              Text('Open workspace',
+                                                  style: AppTextStyles.bodyMd
+                                                      .copyWith(
+                                                          color: AppColors
+                                                              .textPrimaryOf(
+                                                                  context))),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -118,9 +241,12 @@ class WorkspacesListScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => context.push(Routes.createWorkspace),
-        backgroundColor: AppColors.luxuryOrange,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-        child: const Icon(Icons.add, color: AppColors.white, size: 24),
+        backgroundColor: AppColors.brandOrange,
+        elevation: 10,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
+        child:
+            Icon(Icons.add, color: AppColors.textOnBrandOf(context), size: 28),
       ),
     );
   }

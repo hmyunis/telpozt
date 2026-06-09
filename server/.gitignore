@@ -44,3 +44,5 @@ logs/
 Thumbs.db
 .idea/
 .vscode/
+*.iml
+*.swp

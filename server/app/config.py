@@ -13,9 +13,12 @@ class Config:
     JWT_SECRET = os.getenv("JWT_SECRET")
     JWT_EXPIRY_HOURS = int(os.getenv("JWT_EXPIRY_HOURS", "720"))
 
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite")
-    GEMINI_EMBEDDING_MODEL = os.getenv("GEMINI_EMBEDDING_MODEL", "text-embedding-004")
+    OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/api")
+    OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:0.8b")
+    OLLAMA_EMBEDDING_MODEL = os.getenv("OLLAMA_EMBEDDING_MODEL", "qwen3-embedding:0.6b")
+    OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "15m")
+    OLLAMA_REQUEST_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_REQUEST_TIMEOUT_SECONDS", "120"))
+    OLLAMA_DIAGNOSTIC_TIMEOUT_SECONDS = int(os.getenv("OLLAMA_DIAGNOSTIC_TIMEOUT_SECONDS", "8"))
 
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
     TELEGRAM_API_ID = os.getenv("TELEGRAM_API_ID")
@@ -38,7 +41,6 @@ class Config:
         required_keys = [
             "FLASK_SECRET_KEY",
             "JWT_SECRET",
-            "GEMINI_API_KEY",
             "TELEGRAM_BOT_TOKEN",
             "TELEGRAM_API_ID",
             "TELEGRAM_API_HASH",

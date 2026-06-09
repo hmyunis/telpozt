@@ -21,17 +21,30 @@ class ErrorView extends StatelessWidget {
           children: [
             Icon(Icons.error_outline, size: 48, color: colors.textDisabled),
             const SizedBox(height: 16.0),
-            Text('SOMETHING WENT WRONG', style: AppTextStyles.heading2.copyWith(color: colors.textPrimary), textAlign: TextAlign.center),
+            Text('SOMETHING WENT WRONG',
+                style:
+                    AppTextStyles.heading2.copyWith(color: colors.textPrimary),
+                textAlign: TextAlign.center),
             const SizedBox(height: 8.0),
-            Text(SnackbarHelper.readableError(message), style: AppTextStyles.bodyMd.copyWith(color: colors.textSecondary), textAlign: TextAlign.center),
+            Text(SnackbarHelper.readableError(message),
+                style:
+                    AppTextStyles.bodyMd.copyWith(color: colors.textSecondary),
+                textAlign: TextAlign.center),
             const SizedBox(height: 32.0),
             Center(
               child: SizedBox(
                 width: 200,
                 child: OutlinedButton(
                   onPressed: onRetry,
-                  style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.luxuryOrange, width: 1.5), padding: const EdgeInsets.symmetric(vertical: 14.0), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0))),
-                  child: Text('RETRY', style: AppTextStyles.labelLg.copyWith(color: AppColors.luxuryOrange)),
+                  style: OutlinedButton.styleFrom(
+                      side:
+                          BorderSide(color: AppColors.luxuryOrange, width: 1.5),
+                      padding: const EdgeInsets.symmetric(vertical: 14.0),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(4.0))),
+                  child: Text('RETRY',
+                      style: AppTextStyles.labelLg
+                          .copyWith(color: AppColors.luxuryOrange)),
                 ),
               ),
             ),

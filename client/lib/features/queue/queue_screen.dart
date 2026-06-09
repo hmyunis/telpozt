@@ -8,7 +8,6 @@ import '../../shared/widgets/error_view.dart';
 import '../../shared/widgets/loading_view.dart';
 import '../../shared/widgets/pull_to_refresh.dart';
 import '../../shared/widgets/status_badge.dart';
-import '../../shared/widgets/snackbar_helper.dart';
 import 'queue_provider.dart';
 
 class QueueScreen extends ConsumerStatefulWidget {
@@ -24,43 +23,52 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).extension<AppColorsExtension>()!;
     final queueAsync = ref.watch(queueProvider(widget.workspaceId));
 
     return Scaffold(
-      backgroundColor: colors.bgApp,
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('QUEUE', style: AppTextStyles.heading2.copyWith(color: colors.textPrimary)),
-            Text('Workspace Terminal #${widget.workspaceId}', style: AppTextStyles.bodySm.copyWith(color: colors.textMuted)),
-          ],
-        ),
+        leading: IconButton(
+            icon: Icon(Icons.arrow_back), onPressed: () => context.pop()),
+        title: const Text('Queue', style: AppTextStyles.heading1),
       ),
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
             child: Row(
-              children: ['all', 'draft', 'approved', 'scheduled', 'failed', 'cancelled'].map((filter) {
+              children: ['all', 'posting', 'draft', 'approved', 'scheduled']
+                  .map((filter) {
                 final isSelected = _selectedFilter == filter;
                 return Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: ChoiceChip(
-                    label: Text(filter.toUpperCase(), style: AppTextStyles.labelMd.copyWith(color: isSelected ? AppColors.luxuryOrange : colors.textMuted)),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      if (selected) setState(() => _selectedFilter = filter);
-                    },
-                    backgroundColor: Colors.transparent,
-                    selectedColor: AppColors.luxuryOrange.withValues(alpha: 0.15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(100.0),
-                      side: BorderSide(color: isSelected ? AppColors.luxuryOrange : colors.borderDefault, width: isSelected ? 1.5 : 1.0),
+                  padding: const EdgeInsets.only(right: 12.0),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedFilter = filter),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20.0, vertical: 10.0),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.elevatedOf(context)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20.0),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.brandOrange
+                              : AppColors.borderHighlightOf(context),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Text(
+                        filter.toUpperCase(),
+                        style: AppTextStyles.labelMd.copyWith(
+                          color: isSelected
+                              ? AppColors.brandOrange
+                              : AppColors.textSecondaryOf(context),
+                        ),
+                      ),
                     ),
                   ),
                 );
@@ -71,73 +79,131 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
             child: queueAsync.when(
               loading: () => const LoadingView(),
               error: (err, _) => ErrorView(
-                message: err.toString(),
-                onRetry: () => ref.invalidate(queueProvider(widget.workspaceId)),
-              ),
+                  message: err.toString(),
+                  onRetry: () =>
+                      ref.invalidate(queueProvider(widget.workspaceId))),
               data: (list) {
-                final filteredList = _selectedFilter == 'all' ? list : list.where((item) => item.state.toLowerCase() == _selectedFilter).toList();
+                final filteredList = _selectedFilter == 'all'
+                    ? list
+                    : list
+                        .where((item) =>
+                            item.state.toLowerCase() == _selectedFilter)
+                        .toList();
+
                 if (filteredList.isEmpty) {
-                  return RefreshableEmptyState(
-                    onRefresh: () async => ref.invalidate(queueProvider(widget.workspaceId)),
-                    child: Center(
+                  return const Center(
                       child: EmptyStateView(
-                      icon: Icons.pending_actions,
-                      title: 'Queue is Clear',
-                      subtitle: 'No items matching state filter inside this queue.',
-                      action: OutlinedButton(
-                        onPressed: () => _showAddQueueItemDialog(context),
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: AppColors.luxuryOrange, width: 1.5),
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 14.0),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
-                        ),
-                        child: Text('ADD RAW TEXT', style: AppTextStyles.labelLg.copyWith(color: AppColors.luxuryOrange)),
-                      ),
-                    ),
-                    ),
-                  );
+                          icon: Icons.inbox,
+                          title: 'No Items',
+                          subtitle:
+                              'The queue is currently empty for this filter.'));
                 }
+
                 return PullToRefresh(
-                  onRefresh: () async => ref.invalidate(queueProvider(widget.workspaceId)),
+                  onRefresh: () async =>
+                      ref.invalidate(queueProvider(widget.workspaceId)),
                   child: ListView.builder(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+                    padding: const EdgeInsets.all(24.0),
                     itemCount: filteredList.length,
                     itemBuilder: (context, idx) {
                       final item = filteredList[idx];
+                      final isPosting = item.state == 'posting' ||
+                          item.state == 'posting now';
+
                       return GestureDetector(
-                        onTap: () => context.push('/workspaces/${widget.workspaceId}/queue/${item.id}'),
+                        onTap: () => context.push(
+                            '/workspaces/${widget.workspaceId}/queue/${item.id}'),
                         child: Container(
-                          margin: const EdgeInsets.only(bottom: 10.0),
-                          padding: const EdgeInsets.all(16.0),
+                          margin: const EdgeInsets.only(bottom: 16.0),
                           decoration: BoxDecoration(
-                            color: colors.bgSurface,
-                            borderRadius: BorderRadius.circular(8.0),
+                            color: AppColors.surfaceOf(context),
+                            borderRadius: BorderRadius.circular(12.0),
                             border: Border.all(
-                              color: item.state == 'posting' ? AppColors.neonOrange : colors.borderDefault,
-                              width: item.state == 'posting' ? 1.5 : 1.0,
-                            ),
+                                color: isPosting
+                                    ? AppColors.brandOrange
+                                    : AppColors.borderSubtleOf(context)),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  StatusBadge(state: item.state),
-                                  if (item.scheduledAtUtc != null)
-                                    Row(
+                          child: IntrinsicHeight(
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 4,
+                                  decoration: BoxDecoration(
+                                    color: isPosting
+                                        ? AppColors.brandOrange
+                                        : Colors.transparent,
+                                    borderRadius: const BorderRadius.only(
+                                        topLeft: Radius.circular(12),
+                                        bottomLeft: Radius.circular(12)),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(20.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
-                                        const Icon(Icons.schedule, color: AppColors.silver, size: 12),
-                                        const SizedBox(width: 4.0),
-                                        Text(item.scheduledAtUtc!.substring(11, 16), style: AppTextStyles.labelSm.copyWith(color: colors.textSecondary)),
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            StatusBadge(
+                                                state: isPosting
+                                                    ? 'posting now'
+                                                    : item.state,
+                                                showDot: false),
+                                            Text(
+                                              item.scheduledAtUtc
+                                                      ?.substring(11, 16) ??
+                                                  'TBD',
+                                              style: AppTextStyles.mono
+                                                  .copyWith(
+                                                      color:
+                                                          AppColors.textMutedOf(
+                                                              context)),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 16.0),
+                                        Text(
+                                          item.generatedText ??
+                                              item.rawSourceText,
+                                          style: AppTextStyles.bodyMd.copyWith(
+                                              color: AppColors.textPrimaryOf(
+                                                  context)),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 16.0),
+                                        const Divider(),
+                                        const SizedBox(height: 12.0),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.hub_outlined,
+                                                size: 16,
+                                                color: AppColors.textMutedOf(
+                                                    context)),
+                                            const SizedBox(width: 8),
+                                            Text('Automated Sequence',
+                                                style: AppTextStyles.bodySm
+                                                    .copyWith(
+                                                        color: AppColors
+                                                            .textMutedOf(
+                                                                context))),
+                                            const Spacer(),
+                                            Icon(Icons.chevron_right,
+                                                size: 18,
+                                                color: AppColors.textMutedOf(
+                                                    context)),
+                                          ],
+                                        ),
                                       ],
                                     ),
-                                ],
-                              ),
-                              const SizedBox(height: 10.0),
-                              Text(item.generatedText ?? item.rawSourceText, style: AppTextStyles.bodyMd.copyWith(color: colors.textPrimary), maxLines: 2, overflow: TextOverflow.ellipsis),
-                            ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -149,66 +215,6 @@ class _QueueScreenState extends ConsumerState<QueueScreen> {
           )
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddQueueItemDialog(context),
-        backgroundColor: AppColors.luxuryOrange,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
-        child: const Icon(Icons.add, color: AppColors.white, size: 24),
-      ),
-    );
-  }
-
-  void _showAddQueueItemDialog(BuildContext context) {
-    final controller = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) {
-        final colors = Theme.of(context).extension<AppColorsExtension>()!;
-        return AlertDialog(
-          backgroundColor: colors.bgElevated,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0), side: BorderSide(color: colors.borderDefault)),
-          title: Text('QUEUE RAW ENTRY', style: AppTextStyles.heading2.copyWith(color: colors.textPrimary)),
-          content: TextField(
-            controller: controller,
-            maxLines: 4,
-            style: AppTextStyles.bodyLg.copyWith(color: colors.textPrimary),
-            decoration: InputDecoration(
-              hintText: 'Paste raw channel post context...',
-              hintStyle: AppTextStyles.bodyLg.copyWith(color: colors.textMuted),
-              filled: true,
-              fillColor: colors.bgInput,
-              border: const OutlineInputBorder(borderSide: BorderSide.none),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('CANCEL', style: AppTextStyles.labelLg.copyWith(color: colors.textMuted)),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final txt = controller.text.trim();
-                if (txt.isNotEmpty) {
-                  Navigator.pop(context);
-                  try {
-                    await ref.read(queueRepositoryProvider).createQueueItem(widget.workspaceId, txt);
-                    ref.invalidate(queueProvider(widget.workspaceId));
-                    if (context.mounted) {
-                      SnackbarHelper.show(context, message: 'Draft added to queue.', type: SnackbarType.success);
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      SnackbarHelper.showError(context, e);
-                    }
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.luxuryOrange),
-              child: Text('ADD', style: AppTextStyles.labelLg.copyWith(color: AppColors.white)),
-            ),
-          ],
-        );
-      },
     );
   }
 }

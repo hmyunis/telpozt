@@ -53,6 +53,7 @@ def create_app():
         }), 500
 
     from app.api.auth import auth_bp
+    from app.api.system import system_bp
     from app.api.users import users_bp
     from app.api.style_profiles import style_profiles_bp
     from app.api.workspaces import workspaces_bp
@@ -60,6 +61,7 @@ def create_app():
     from app.api.history import history_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
+    app.register_blueprint(system_bp, url_prefix="/api/v1/system")
     app.register_blueprint(users_bp, url_prefix="/api/v1/user")
     app.register_blueprint(style_profiles_bp, url_prefix="/api/v1/style-profiles")
     app.register_blueprint(workspaces_bp, url_prefix="/api/v1/workspaces")
