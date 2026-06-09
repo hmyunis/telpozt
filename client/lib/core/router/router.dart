@@ -42,7 +42,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final isAuthenticated = authState.isAuthenticated;
-      final isResolvingAuth = authState.isChecking || authState.isLoading;
+      final isResolvingAuth = authState.isChecking;
       final isSplashRoute = state.matchedLocation == Routes.splash;
       final isLoginRoute = state.matchedLocation == Routes.login;
       final isConnectionRoute = state.matchedLocation == Routes.connectionSetup;
@@ -51,7 +51,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         return (isSplashRoute || isConnectionRoute) ? null : Routes.splash;
       }
 
-      if (!isAuthenticated && !isLoginRoute) {
+      if (!isAuthenticated && !isLoginRoute && !isConnectionRoute) {
         return Routes.login;
       }
       if (isAuthenticated && (isLoginRoute || isSplashRoute)) {

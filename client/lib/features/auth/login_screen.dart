@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api/api_error.dart';
+import '../../core/api/api_client.dart';
 import '../../core/auth/auth_provider.dart';
 import '../../core/router/routes.dart';
 import '../../core/theme/app_colors.dart';
@@ -23,6 +24,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   String? _errorMessage;
   bool _isLoading = false;
+
+  Future<void> _openConnectionSetup() async {
+    await context.push(Routes.connectionSetup);
+    if (mounted) {
+      setState(() {});
+    }
+  }
 
   @override
   void dispose() {
@@ -56,6 +64,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final savedBackendUrl = normalizeBackendBaseUrl(
+      ref.read(prefsStorageProvider).backendBaseUrl,
+    );
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -90,6 +102,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         style: AppTextStyles.bodyMd
                             .copyWith(color: AppColors.textMutedOf(context)),
                         textAlign: TextAlign.center),
+                    const SizedBox(height: 24.0),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.elevatedOf(context),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.borderSubtleOf(context),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            'BACKEND URL',
+                            style: AppTextStyles.labelMd.copyWith(
+                              color: AppColors.textMutedOf(context),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            savedBackendUrl,
+                            style: AppTextStyles.bodyMd.copyWith(
+                              color: AppColors.textPrimaryOf(context),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          CustomButton(
+                            label: 'CONFIGURE CONNECTION',
+                            variant: CustomButtonVariant.outline,
+                            onPressed: _openConnectionSetup,
+                            icon: Icons.settings_ethernet,
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 40.0),
                     CustomTextField(
                       label: 'USERNAME',
@@ -136,7 +184,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.warning_amber_rounded,
+                            const Icon(Icons.warning_amber_rounded,
                                 color: AppColors.danger, size: 16),
                             const SizedBox(width: 8),
                             Expanded(
