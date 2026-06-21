@@ -1,5 +1,11 @@
 # Telpozt
 
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com)
+[![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)](https://sqlite.org)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Telpozt is a local-first Telegram content workflow for turning scraped source messages into polished post drafts.
 
 It combines:
@@ -27,31 +33,31 @@ Internal queue/state-machine storage still exists in the backend, but the user-f
 - Workspace-based publishing setup
 - Style profiles for tone, structure, length, CTA, hashtags, and custom instructions
 - Source channel management with:
-  - add, edit, delete
-  - priority
-  - default scrape message count
-  - default lookback days
-  - active/inactive toggles
+    - add, edit, delete
+    - priority
+    - default scrape message count
+    - default lookback days
+    - active/inactive toggles
 - Per-run scrape overrides:
-  - message count
-  - date range
+    - message count
+    - date range
 - Candidate review with multi-select draft generation
 - Draft composer with:
-  - editable generated text
-  - selected source previews
-  - expandable original scraped messages
-  - source metadata such as posted time and view count
-  - regenerate with optional inline suggestion
-  - copy full external-AI prompt to clipboard
-  - save draft
-  - post now
-  - schedule
+    - editable generated text
+    - selected source previews
+    - expandable original scraped messages
+    - source metadata such as posted time and view count
+    - regenerate with optional inline suggestion
+    - copy full external-AI prompt to clipboard
+    - save draft
+    - post now
+    - schedule
 - Draft deletion with permanent backend removal
 - Draft listing with:
-  - server-side pagination
-  - server-side search by content
-  - multi-source filters
-  - scraped-date filtering
+    - server-side pagination
+    - server-side search by content
+    - multi-source filters
+    - scraped-date filtering
 - Published history view
 - Schedule configuration per workspace
 - Biometric app lock
@@ -96,8 +102,8 @@ At minimum, you need:
 - Python 3.11+
 - a configured `.env`
 - Ollama running with:
-  - `qwen3.5:0.8b`
-  - `qwen3-embedding:0.6b`
+    - `qwen3.5:0.8b`
+    - `qwen3-embedding:0.6b`
 
 ### 2. Start the Flutter client
 
