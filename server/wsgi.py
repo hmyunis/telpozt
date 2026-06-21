@@ -1,8 +1,6 @@
 import logging
-
 from app.api import create_app
 from app.models.db import init_db
-from app.services.scheduler import start_scheduler
 
 logging.basicConfig(
     level=logging.INFO,
@@ -12,12 +10,6 @@ logging.basicConfig(
 
 init_db()
 application = create_app()
-
-from app.api.webhook import webhook_bp
-
-application.register_blueprint(webhook_bp, url_prefix="/api/v1/webhook")
-
-start_scheduler()
 
 if __name__ == "__main__":
     application.run(host="0.0.0.0", port=5000, debug=False)
