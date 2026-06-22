@@ -1,0 +1,122 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Monda:wght@400;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --app-void: #F4F4F5;
+  --app-obsidian: #FFFFFF;
+  --app-graphite: #E4E4E7;
+  --app-iron: #D4D4D8;
+  --app-steel: #A1A1AA;
+  --app-ash: #71717A;
+  --app-silver: #3F3F46;
+  --app-white: #09090b;
+  --app-black: #ffffff;
+}
+
+.dark {
+  --app-void: #0A0A0A;
+  --app-obsidian: #111111;
+  --app-graphite: #1A1A1A;
+  --app-iron: #2A2A2A;
+  --app-steel: #3D3D3D;
+  --app-ash: #6B6B6B;
+  --app-silver: #A8A8A8;
+  --app-white: #FFFFFF;
+  --app-black: #000000;
+}
+
+@theme {
+  --font-display: "Monda", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-void: var(--app-void);
+  --color-obsidian: var(--app-obsidian);
+  --color-graphite: var(--app-graphite);
+  --color-iron: var(--app-iron);
+  --color-steel: var(--app-steel);
+  --color-ash: var(--app-ash);
+  --color-silver: var(--app-silver);
+  --color-white: var(--app-white);
+  --color-black: var(--app-black);
+  
+  --color-brand-orange: #E8660A;
+  --color-neon-orange: #FF6B00;
+  --color-ember: #C4520A;
+  --color-danger: #E83A2A;
+  --color-success: #2AE87A;
+
+  --shadow-neon-glow: 0 0 16px rgba(255, 107, 0, 0.30), 0 0 4px rgba(255, 107, 0, 0.15);
+}
+
+@layer base {
+  body {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--color-void);
+    border-left: 1px solid var(--color-iron);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-brand-orange);
+    border-radius: 0;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-neon-orange);
+  }
+
+  ::-webkit-scrollbar-corner {
+    background: var(--color-void);
+  }
+}
+
+@keyframes luxury-shimmer-anim {
+  0% {
+    background-position: 250% 0;
+  }
+  100% {
+    background-position: -150% 0;
+  }
+}
+
+.luxury-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--app-graphite) 0%,
+    var(--app-graphite) 25%,
+    var(--app-iron) 40%,
+    rgba(232, 102, 10, 0.20) 50%, /* Luxurious glowing brand orange highlight */
+    var(--app-iron) 60%,
+    var(--app-graphite) 75%,
+    var(--app-graphite) 100%
+  ) !important;
+  background-size: 400% 100% !important;
+  animation: luxury-shimmer-anim 2.2s infinite linear !important;
+  border: 1px solid rgba(232, 102, 10, 0.15) !important;
+  box-shadow: 0 0 16px rgba(232, 102, 10, 0.04) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.luxury-shimmer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 107, 0, 0) 0%,
+    rgba(255, 107, 0, 0.03) 50%,
+    rgba(255, 107, 0, 0) 100%
+  );
+  pointer-events: none;
+}

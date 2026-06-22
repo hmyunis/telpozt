@@ -1,176 +1,122 @@
 # Telpozt
 
-[![Flutter](https://img.shields.io/badge/Flutter-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
-[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://python.org)
-[![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white)](https://flask.palletsprojects.com)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)](https://sqlite.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+<p align="center">
+  Telegram Mini App for sourcing, curating, and turning channel content into post-ready drafts.
+</p>
 
-Telpozt is a local-first Telegram content workflow for turning scraped source messages into polished post drafts.
+<p align="center">
+  <img src="https://img.shields.io/badge/React-19-111827?logo=react" alt="React 19" />
+  <img src="https://img.shields.io/badge/Vite-6-111827?logo=vite" alt="Vite 6" />
+  <img src="https://img.shields.io/badge/Flask-3-111827?logo=flask" alt="Flask 3" />
+  <img src="https://img.shields.io/badge/SQLite-3-111827?logo=sqlite" alt="SQLite" />
+  <img src="https://img.shields.io/badge/Telegram-Mini_App-111827?logo=telegram" alt="Telegram Mini App" />
+</p>
 
-It combines:
+---
 
-- a Flutter client for Android, iOS, desktop, and web
-- a Flask backend with SQLite persistence
-- Telegram scraping and posting
-- local Ollama models on the same LAN or Wi-Fi as the mobile device
+## What It Is
 
-The current product flow is draft-first:
+Telpozt is a two-part system:
 
-1. `Find Content` scrapes one or more configured source channels.
-2. The user reviews the candidate messages from that scrape run.
-3. The user selects one or more source items.
-4. Telpozt generates one merged draft.
-5. The user edits, regenerates, saves, posts now, or schedules later.
+- [`mini_app/`](mini_app/) is a React + Vite Telegram Mini App
+- [`server/`](server/) is a Flask backend with SQLite, Telethon scraping, Telegram webhook handling, and prompt assembly
 
-Internal queue/state-machine storage still exists in the backend, but the user-facing app centers on `candidates`, `drafts`, and `published posts`.
+The current frontend is wired to the real backend. It no longer relies on frontend mock data.
 
-## Current Features
+## Product Flow
 
-- Local Ollama generation using `qwen3.5:0.8b`
-- Local Ollama embeddings using `qwen3-embedding:0.6b`
-- Robust mobile-to-backend connection setup with automatic health checks
-- Workspace-based publishing setup
-- Style profiles for tone, structure, length, CTA, hashtags, and custom instructions
-- Source channel management with:
-    - add, edit, delete
-    - priority
-    - default scrape message count
-    - default lookback days
-    - active/inactive toggles
-- Per-run scrape overrides:
-    - message count
-    - date range
-- Candidate review with multi-select draft generation
-- Draft composer with:
-    - editable generated text
-    - selected source previews
-    - expandable original scraped messages
-    - source metadata such as posted time and view count
-    - regenerate with optional inline suggestion
-    - copy full external-AI prompt to clipboard
-    - save draft
-    - post now
-    - schedule
-- Draft deletion with permanent backend removal
-- Draft listing with:
-    - server-side pagination
-    - server-side search by content
-    - multi-source filters
-    - scraped-date filtering
-- Published history view
-- Schedule configuration per workspace
-- Biometric app lock
-- Light and dark themes
+```text
+Source channels -> Scrape -> Candidate review -> Multi-select -> Prompt generation -> Telegram publishing workflow
+```
 
-## Repository Layout
+Core user actions:
+
+- manage workspaces
+- manage source channels
+- manage style profiles
+- review scraped candidates
+- generate a combined prompt from selected posts
+
+## Stack
+
+| Layer | Current Tech |
+| --- | --- |
+| Frontend | React 19, Vite, TypeScript, TanStack Query |
+| Backend | Flask, Flask-CORS, Flask-Limiter |
+| Data | SQLite |
+| Telegram | Telegram Mini App auth, Bot API, Telethon |
+| Embeddings | Hugging Face Inference API |
+
+## Repo Layout
 
 ```text
 telpozt/
-├─ client/   Flutter app
-├─ server/   Flask API, SQLite schema, scraping, generation, scheduling
+├─ mini_app/      React Telegram Mini App
+├─ server/        Flask API, DB schema, Telegram integrations
+├─ DEPLOYMENT.md  cPanel + Telegram deployment guide
+├─ SPEC.md        product and behavior notes
 └─ README.md
 ```
 
-## Tech Stack
+## API Surface
 
-### Client
+Main backend routes exposed today:
 
-- Flutter
-- Riverpod
-- GoRouter
-- Dio
-- Local auth
-
-### Server
-
-- Flask
-- SQLite
-- APScheduler
-- Telethon
-- python-telegram-bot
-- Ollama
+- `GET /api/v1/system/health`
+- `GET /api/v1/user/me`
+- `GET|POST /api/v1/style-profiles`
+- `GET|POST /api/v1/workspaces`
+- `GET|PUT /api/v1/workspaces/:id`
+- `GET|POST /api/v1/workspaces/:id/source-channels`
+- `GET /api/v1/workspaces/:id/candidates`
+- `POST /api/v1/workspaces/:id/scrape`
+- `POST /api/v1/workspaces/:id/prompt`
+- `GET /api/v1/workspaces/:id/queue`
+- `GET /api/v1/workspaces/:id/history`
+- `POST /api/v1/webhook/telegram`
 
 ## Local Development
 
-### 1. Start the backend
-
-Use the backend setup guide in [server/README.md](server/README.md).
-
-At minimum, you need:
-
-- Python 3.11+
-- a configured `.env`
-- Ollama running with:
-    - `qwen3.5:0.8b`
-    - `qwen3-embedding:0.6b`
-
-### 2. Start the Flutter client
+### Frontend
 
 ```powershell
-cd client
-flutter pub get
-flutter run
+cd mini_app
+npm install
+npm run dev
 ```
 
-For a physical phone, the app should point to the backend computer's LAN URL, for example:
+Use `VITE_API_BASE_URL` to point the mini app at your backend.
 
-```text
-http://192.168.1.23:5000/api/v1
-```
-
-Do not use `127.0.0.1` or `localhost` from a separate mobile device.
-
-## Android APK
-
-A shareable Android release APK can be built from `client/` with:
+### Backend
 
 ```powershell
-flutter build apk --release
+cd server
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python init_db.py
+python wsgi.py
 ```
 
-The output path is:
+Backend env values are described in [server/.env.example](server/.env.example).
 
-```text
-client/build/app/outputs/flutter-apk/app-release.apk
-```
+Important current requirement:
 
-## Backend Overview
+- the checked-in backend expects `HF_API_KEY`
+- protected routes expect Telegram Mini App `initData`
 
-Key backend resources:
+## Deployment
 
-- `GET /api/v1/system/health`
-- `POST /api/v1/auth/register-admin`
-- `POST /api/v1/auth/login`
-- `GET /api/v1/style-profiles`
-- `GET /api/v1/workspaces`
-- `POST /api/v1/workspaces/<id>/scrape`
-- `GET /api/v1/workspaces/<id>/source-channels`
-- `GET /api/v1/workspaces/<id>/drafts`
-- `POST /api/v1/workspaces/<id>/drafts`
-- `POST /api/v1/workspaces/<id>/drafts/<draft_id>/regenerate`
-- `PATCH /api/v1/workspaces/<id>/drafts/<draft_id>/text`
-- `POST /api/v1/workspaces/<id>/drafts/<draft_id>/publish`
-- `POST /api/v1/workspaces/<id>/drafts/<draft_id>/schedule`
-- `DELETE /api/v1/workspaces/<id>/drafts/<draft_id>`
-- `GET /api/v1/workspaces/<id>/history`
+Use [DEPLOYMENT.md](DEPLOYMENT.md) for the production setup covering:
+
+- cPanel Python app hosting
+- frontend hosting
+- Telegram bot wiring
+- webhook registration
+- Telethon session upload
 
 ## Notes
 
-- The backend must be reachable by the phone over the same Wi-Fi or LAN.
-- Ollama may run on the same backend machine or another reachable machine on the local network.
-- Draft generation is multi-source aware.
-- Published posts are stored separately from editable drafts.
-
-## GitHub Readiness
-
-This repository intentionally ignores:
-
-- local backend secrets
-- SQLite databases
-- Telethon sessions
-- Python virtual environments
-- Flutter build artifacts
-- editor and OS noise
-
-Ignore rules now live in [client/.gitignore](client/.gitignore) and [server/.gitignore](server/.gitignore).
+- The root `README.md` you may have seen previously was stale.
+- The codebase is currently React-based, not Flutter-based.
+- The current backend config uses Hugging Face embeddings, not the older Ollama path described in some older notes.
